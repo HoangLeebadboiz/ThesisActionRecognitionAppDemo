@@ -1,21 +1,27 @@
+import json
 import os
 import sys
 
 import qdarktheme
 from PyQt5 import QtCore, QtGui
+from PyQt5.QtMultimedia import QMediaPlayer
+from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtWidgets import (
     QApplication,
     QComboBox,
     QHBoxLayout,
+    QLabel,
+    QLineEdit,
     QMainWindow,
-    QOpenGLWidget,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
+from views.create_job import CreateJobView  # Import CreateJobView
 from views.login import LoginView
 from views.signup import SignupView
+from views.video_viewer import VideoViewer
 
 
 class MainWindow(QMainWindow):
@@ -25,7 +31,11 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(qdarktheme.load_stylesheet())
 
         # Set window icon
-        self.setWindowIcon(QtGui.QIcon(os.path.abspath(__file__ + "/../icons/app.png")))
+        icon_path = os.path.abspath(__file__ + "/../icons/appicon.png")
+        app_icon = QtGui.QIcon(icon_path)
+        self.setWindowIcon(app_icon)
+        # Also set the application-wide icon
+        QApplication.setWindowIcon(app_icon)
 
         # Get screen size and set window geometry
         screen = QApplication.desktop().screenGeometry()
@@ -36,7 +46,40 @@ class MainWindow(QMainWindow):
         self.loginBtn = QPushButton("Login")
         self.signupBtn = QPushButton("Sign Up")
         self.jobComboBox = QComboBox()
-        self.videoWidget = QOpenGLWidget()
+        self.videoWidget = VideoViewer(
+            "C:/Users/HoangLee/Desktop/Recording 2024-12-30 173656.mp4"
+        )
+
+        # Disable job combo box and video viewer before login
+        self.jobComboBox.setEnabled(False)
+        self.videoWidget.setEnabled(False)
+        self.videoWidget.toolbar.setEnabled(False)
+
+        # Set icons for buttons
+        icon_path = os.path.dirname(os.path.abspath(__file__))
+        self.loginBtn.setIcon(QtGui.QIcon(os.path.join(icon_path, "icons/login.png")))
+        self.signupBtn.setIcon(QtGui.QIcon(os.path.join(icon_path, "icons/signup.png")))
+
+        # Set icon sizes
+        self.loginBtn.setIconSize(QtCore.QSize(24, 24))
+        self.signupBtn.setIconSize(QtCore.QSize(24, 24))
+        self.jobComboBox.setIconSize(QtCore.QSize(32, 32))
+
+        # Add items with job icon
+        job_icon = QtGui.QIcon(os.path.join(icon_path, "icons/job.png"))
+        self.jobComboBox.addItem(job_icon, "New Job")
+        self.jobComboBox.addItem(job_icon, "Open Job")
+        self.jobComboBox.addItem(job_icon, "Save Job")
+
+        # Init workspace path
+        self.workspace_path = os.path.abspath(__file__ + "/../workspace")
+        if not os.path.exists(self.workspace_path):
+            os.makedirs(self.workspace_path)
+        datajobs_path = os.path.join(self.workspace_path, "datajobs.json")
+        if not os.path.exists(datajobs_path):
+            with open(datajobs_path, "w") as f:
+                json.dump({}, f)
+        self.job_path = None
 
         self.initUI()
         self.showMaximized()
@@ -55,23 +98,23 @@ class MainWindow(QMainWindow):
         self.jobComboBox.setStyleSheet(
             """
             QComboBox {
-                font-size: 24px;
-                padding: 12px 20px;
+                font-size: 28px;
+                padding: 15px 25px;
                 border: 2px solid #2196F3;
                 border-radius: 10px;
                 background: #1E1E1E;
-                min-width: 300px;
+                min-width: 200px;
                 color: #FFFFFF;
                 text-align: center;
             }
             QComboBox::drop-down {
                 border: none;
-                padding-right: 15px;
+                padding-right: 20px;
             }
             QComboBox::down-arrow {
                 image: url(icons/arrow-down.png);
-                width: 16px;
-                height: 16px;
+                width: 20px;
+                height: 20px;
             }
             QComboBox:hover {
                 border-color: #42A5F5;
@@ -81,24 +124,27 @@ class MainWindow(QMainWindow):
                 background: #1E1E1E;
                 border: 2px solid #2196F3;
                 border-radius: 10px;
-                padding: 10px;
+                padding: 15px;
                 selection-background-color: #2196F3;
                 selection-color: white;
-                font-size: 24px;
+                font-size: 28px;
             }
             QComboBox QAbstractItemView::item {
-                min-height: 45px;
-                padding: 8px;
+                min-height: 50px;
+                padding: 10px;
             }
         """
         )
 
         # Set job combobox items and size
-        self.jobComboBox.addItems(["New Job", "Open Job", "Save Job"])
-        self.jobComboBox.setPlaceholderText("Job")
-        self.jobComboBox.setFixedHeight(60)  # Increased height
+        # self.jobComboBox.addItems(["New Job", "Open Job", "Save Job"])
+        self.jobComboBox.setCurrentIndex(-1)
+        self.jobComboBox.setLineEdit(QLineEdit())
+        self.jobComboBox.lineEdit().setText("Select Job")
+        self.jobComboBox.lineEdit().setReadOnly(True)
+        self.jobComboBox.setFixedHeight(70)
 
-        # Style buttons
+        # Define button base style
         button_style = """
             QPushButton {
                 font-size: 16px;
@@ -118,12 +164,20 @@ class MainWindow(QMainWindow):
                 background: #2196F3;
                 border: none;
                 color: white;
+                padding-left: 10px;
             }
             QPushButton:hover {
                 background: #42A5F5;
             }
             QPushButton:pressed {
                 background: #1E88E5;
+            }
+            QPushButton::icon {
+                width: 24px;
+                height: 24px;
+                position: absolute;
+                left: 10px;
+                filter: brightness(0) invert(1);  /* Makes the icon white */
             }
         """
         )
@@ -136,12 +190,31 @@ class MainWindow(QMainWindow):
                 background: transparent;
                 border: 2px solid #2196F3;
                 color: #2196F3;
+                padding-left: 10px;
             }
             QPushButton:hover {
                 background: rgba(33, 150, 243, 0.1);
             }
             QPushButton:pressed {
                 background: rgba(33, 150, 243, 0.2);
+            }
+            QPushButton::icon {
+                width: 24px;
+                height: 24px;
+                position: absolute;
+                left: 10px;
+                filter: brightness(0) saturate(100%) invert(48%) sepia(57%) saturate(2303%) hue-rotate(190deg) brightness(97%) contrast(95%);
+            }
+        """
+        )
+
+        # Style video widget
+        self.videoWidget.setStyleSheet(
+            """
+            QVideoWidget {
+                background: #121212;
+                border: 2px solid #333333;
+                border-radius: 12px;
             }
         """
         )
@@ -158,17 +231,6 @@ class MainWindow(QMainWindow):
         toplayout.addWidget(self.signupBtn)
         toplayout.addSpacing(10)
 
-        # Style video widget
-        self.videoWidget.setStyleSheet(
-            """
-            QOpenGLWidget {
-                background: #121212;
-                border: 2px solid #333333;
-                border-radius: 12px;
-            }
-        """
-        )
-
         # Add layouts and widgets
         layout.addLayout(toplayout)
         layout.addWidget(self.videoWidget)
@@ -184,14 +246,39 @@ class MainWindow(QMainWindow):
         # Connect events
         self.loginBtn.clicked.connect(self.login)
         self.signupBtn.clicked.connect(self.signup)
+        # Event when click item in combobox
+        self.jobComboBox.currentIndexChanged.connect(self.jobComboBoxSelected)
 
     def login(self):
         self.loginView = LoginView()
+        # Connect login success signal
+        self.loginView.loginSuccess.connect(self.onLoginSuccess)
         self.loginView.show()
+
+    def onLoginSuccess(self):
+        # Enable features after successful login
+        self.jobComboBox.setEnabled(True)
+        self.videoWidget.setEnabled(True)
+        self.videoWidget.toolbar.setEnabled(True)
 
     def signup(self):
         self.signupView = SignupView()
         self.signupView.show()
+
+    def jobComboBoxSelected(self, index):
+        if index == -1:
+            pass
+        elif index == 0:
+            self.createJobView = CreateJobView(
+                self.workspace_path
+            )  # Pass workspace path
+            self.createJobView.createJobSuccess.connect(self.onJob)
+            self.createJobView.show()
+
+    def onJob(self, job_path):
+        self.job_path = job_path
+        self.jobComboBox.setCurrentIndex(-1)
+        self.jobComboBox.lineEdit().setText(os.path.basename(job_path))
 
 
 def main():

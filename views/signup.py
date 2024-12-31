@@ -22,10 +22,6 @@ class SignupView(QWidget):
         self.setWindowTitle("Sign Up")
         self.setStyleSheet(qdarktheme.load_stylesheet())
         screen = QApplication.desktop().screenGeometry()
-        # Set icon
-        self.setWindowIcon(
-            QtGui.QIcon(os.path.abspath(__file__ + "/../../icons/signup.png"))
-        )
         # Set window size
         self.setFixedSize(screen.width() // 3, screen.height() // 2)
 
@@ -51,22 +47,14 @@ class SignupView(QWidget):
         self.showPassBtn = QPushButton()
         self.showConfirmPassBtn = QPushButton()
 
+        icon_path = os.path.dirname(os.path.abspath(__file__))
+        eye_off_icon = QtGui.QIcon(os.path.join(icon_path, "../icons/eye-off.png"))
+
         for btn in [self.showPassBtn, self.showConfirmPassBtn]:
             btn.setCheckable(True)
             btn.setFixedSize(48, 48)
-            btn.setStyleSheet(
-                """
-                QPushButton {
-                    border: none;
-                    background-image: url(icons/eye-off.png);
-                    background-position: center;
-                    background-repeat: no-repeat;
-                }
-                QPushButton:checked {
-                    background-image: url(icons/eye.png);
-                }
-                """
-            )
+            btn.setIcon(eye_off_icon)
+            btn.setIconSize(QtCore.QSize(24, 24))
 
         self.showPassBtn.clicked.connect(
             lambda: self.toggle_password_visibility(
@@ -112,12 +100,12 @@ class SignupView(QWidget):
                 font-weight: bold;
             }
             QLineEdit {
-                font-size: 18px;
-                padding: 12px;
+                font-size: 24px;
+                padding: 15px;
                 border: 2px solid #555;
                 border-radius: 8px;
                 background: #333;
-                min-height: 25px;
+                min-height: 30px;
             }
             QLineEdit:focus {
                 border: 2px solid #2196F3;
@@ -260,17 +248,34 @@ class SignupView(QWidget):
                 "Error", "Passwords do not match", QMessageBox.Icon.Critical
             )
             return
-
-        # TODO: Add email validation
-        # TODO: Add password strength validation
-        # TODO: Implement actual user registration
+        username = self.usernameInput.text()
+        email = self.emailInput.text()
+        password = self.passwordInput.text()
+        userconfig = os.path.abspath(__file__ + "/../../database/users/users.json")
+        if not os.path.exists(userconfig):
+            with open(userconfig, "w") as f:
+                json.dump({}, f)
+        with open(userconfig, "r+") as f:
+            users = json.load(f)
+            users[username] = {
+                "username": username,
+                "email": email,
+                "password": password,
+            }
+            f.seek(0)
+            f.truncate()
+            json.dump(users, f, indent=4)
         self.show_message(
             "Success", "Account created successfully!", QMessageBox.Icon.Information
         )
         self.close()
 
     def back_to_login(self):
-        self.close()
+        from views.login import LoginView
+
+        self.login_window = LoginView()
+        self.login_window.show()
+        self.close()  # Close signup window when going back to login
 
     def show_message(self, title, message, icon):
         msg = QMessageBox()
@@ -280,7 +285,10 @@ class SignupView(QWidget):
         msg.exec_()
 
     def toggle_password_visibility(self, input_field, button):
+        icon_path = os.path.dirname(os.path.abspath(__file__))
         if button.isChecked():
             input_field.setEchoMode(QLineEdit.EchoMode.Normal)
+            button.setIcon(QtGui.QIcon(os.path.join(icon_path, "../icons/eye.png")))
         else:
             input_field.setEchoMode(QLineEdit.EchoMode.Password)
+            button.setIcon(QtGui.QIcon(os.path.join(icon_path, "../icons/eye-off.png")))

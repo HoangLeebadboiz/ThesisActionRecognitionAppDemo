@@ -5,13 +5,11 @@ import qdarktheme
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import (
     QApplication,
-    QComboBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
-    QOpenGLWidget,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -19,15 +17,13 @@ from PyQt5.QtWidgets import (
 
 
 class LoginView(QWidget):
+    loginSuccess = QtCore.pyqtSignal()  # Add signal
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Login")
         self.setStyleSheet(qdarktheme.load_stylesheet())
         screen = QApplication.desktop().screenGeometry()
-        # Set icon
-        self.setWindowIcon(
-            QtGui.QIcon(os.path.abspath(__file__ + "/../../icons/login.png"))
-        )
         # Adjust window size for better proportions
         self.setFixedSize(screen.width() // 3, screen.height() // 2)
 
@@ -42,19 +38,14 @@ class LoginView(QWidget):
         self.showPassBtn = QPushButton()
         self.showPassBtn.setCheckable(True)
         self.showPassBtn.setFixedSize(48, 48)
-        self.showPassBtn.setStyleSheet(
-            """
-            QPushButton {
-                border: none;
-                background-image: url(icons/eye-off.png);
-                background-position: center;
-                background-repeat: no-repeat;
-            }
-            QPushButton:checked {
-                background-image: url(icons/eye.png);
-            }
-        """
+
+        # Set icons for show/hide password
+        icon_path = os.path.dirname(os.path.abspath(__file__))
+        self.showPassBtn.setIcon(
+            QtGui.QIcon(os.path.join(icon_path, "../icons/eye-off.png"))
         )
+        self.showPassBtn.setIconSize(QtCore.QSize(24, 24))
+
         self.showPassBtn.clicked.connect(self.toggle_password_visibility)
         self.InitUI()
 
@@ -92,12 +83,12 @@ class LoginView(QWidget):
                 font-weight: bold;
             }
             QLineEdit {
-                font-size: 18px;
-                padding: 12px;
+                font-size: 24px;
+                padding: 15px;
                 border: 2px solid #555;
                 border-radius: 8px;
                 background: #333;
-                min-height: 25px;
+                min-height: 30px;
             }
             QLineEdit:focus {
                 border: 2px solid #2196F3;
@@ -220,6 +211,7 @@ class LoginView(QWidget):
                     msg.setWindowTitle("Success")
                     msg.setText("Login successfully")
                     msg.exec_()
+                    self.loginSuccess.emit()  # Emit signal on successful login
                     self.close()
                 else:
                     msg.setIcon(QMessageBox.Icon.Critical)
@@ -232,9 +224,25 @@ class LoginView(QWidget):
 
         self.signup_window = SignupView()
         self.signup_window.show()
+        self.close()  # Close login window when opening signup
 
     def toggle_password_visibility(self):
         if self.showPassBtn.isChecked():
             self.passInput.setEchoMode(QLineEdit.EchoMode.Normal)
+            self.showPassBtn.setIcon(
+                QtGui.QIcon(
+                    os.path.join(
+                        os.path.dirname(os.path.abspath(__file__)), "../icons/eye.png"
+                    )
+                )
+            )
         else:
             self.passInput.setEchoMode(QLineEdit.EchoMode.Password)
+            self.showPassBtn.setIcon(
+                QtGui.QIcon(
+                    os.path.join(
+                        os.path.dirname(os.path.abspath(__file__)),
+                        "../icons/eye-off.png",
+                    )
+                )
+            )
