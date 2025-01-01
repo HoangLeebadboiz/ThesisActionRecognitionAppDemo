@@ -1,16 +1,29 @@
 import os
+from typing import Optional
 
 from PyQt5 import QtGui
-from PyQt5.QtCore import QSize, Qt, QUrl
+from PyQt5.QtCore import QRectF, QSize, QSizeF, Qt, QUrl
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
-from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import QAction, QToolBar, QToolButton, QVBoxLayout, QWidget
+from PyQt5.QtMultimediaWidgets import QGraphicsVideoItem, QVideoWidget
+from PyQt5.QtWidgets import (
+    QAction,
+    QGraphicsScene,
+    QGraphicsView,
+    QHBoxLayout,
+    QSlider,
+    QStyle,
+    QToolBar,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class VideoViewer(QWidget):
-    def __init__(self, video_path: str):
+    def __init__(self, video_path: str = None):
         super().__init__()
         self.video_path = video_path
+        self.zoom_factor = 1.0  # Track zoom level
 
         # Create toolbar
         self.toolbar = QToolBar()
@@ -25,12 +38,15 @@ class VideoViewer(QWidget):
         """
         )
 
-        # Create media player and video widget
-        self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
-        self.videoWidget = QVideoWidget()
-        self.videoWidget.setStyleSheet(
+        # Create graphics scene and view for zooming
+        self.scene = QGraphicsScene()
+        self.view = QGraphicsView(self.scene)
+        self.view.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.view.setStyleSheet(
             """
-            QVideoWidget {
+            QGraphicsView {
                 background: #121212;
                 border: 2px solid #333333;
                 border-radius: 12px;
@@ -38,13 +54,72 @@ class VideoViewer(QWidget):
         """
         )
 
+        # Create video item
+        self.videoItem = QGraphicsVideoItem()
+        self.scene.addItem(self.videoItem)
+
+        # Create media player
+        self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+        self.mediaPlayer.setVideoOutput(self.videoItem)
+
         # Setup media player
-        self.mediaPlayer.setVideoOutput(self.videoWidget)
-        if os.path.exists(video_path):
+        if video_path and os.path.exists(video_path):
             media_content = QMediaContent(
                 QUrl.fromLocalFile(os.path.abspath(video_path))
             )
             self.mediaPlayer.setMedia(media_content)
+
+        # Create progress slider
+        self.progressSlider = QSlider(Qt.Horizontal)
+        self.progressSlider.setStyleSheet(
+            """
+            QSlider {
+                height: 30px;
+                background: transparent;
+            }
+            QSlider::groove:horizontal {
+                height: 8px;
+                background: #333;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                width: 20px;
+                height: 20px;
+                margin: -6px 0;
+                border-radius: 10px;
+                background: #2196F3;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #42A5F5;
+                width: 24px;
+                height: 24px;
+                margin: -8px 0;
+            }
+            QSlider::handle:horizontal:pressed {
+                background: #1976D2;
+            }
+            QSlider::sub-page:horizontal {
+                background: #2196F3;
+                border-radius: 4px;
+            }
+            """
+        )
+        self.progressSlider.setEnabled(False)  # Disabled by default
+        self.progressSlider.setTracking(False)  # Only update when released
+        self.progressSlider.setPageStep(5000)  # 5 seconds jump for page step
+
+        # Connect media player signals
+        self.mediaPlayer.durationChanged.connect(self.durationChanged)
+        self.mediaPlayer.positionChanged.connect(self.positionChanged)
+        self.progressSlider.sliderMoved.connect(self.setPosition)
+        self.progressSlider.sliderPressed.connect(self.sliderPressed)
+        self.progressSlider.sliderReleased.connect(self.sliderReleased)
+        self.progressSlider.mouseReleaseEvent = (
+            self.sliderMouseReleaseEvent
+        )  # Override mouse release
+        self.progressSlider.mousePressEvent = (
+            self.sliderMousePressEvent
+        )  # Override mouse press
 
         self.InitUI()
 
@@ -115,30 +190,131 @@ class VideoViewer(QWidget):
         fit_action.triggered.connect(self.fit_to_window)
         play_action.triggered.connect(self.play)
 
+        # Create layout for progress bar
+        progressLayout = QHBoxLayout()
+        progressLayout.setContentsMargins(10, 0, 10, 10)
+        progressLayout.addWidget(self.progressSlider)
+
         # Add widgets to layout
         layout.addWidget(self.toolbar)
-        layout.addWidget(self.videoWidget)
+        layout.addWidget(self.view)
+        layout.addLayout(progressLayout)
 
         # Set layout stretch
         layout.setStretchFactor(self.toolbar, 0)
-        layout.setStretchFactor(self.videoWidget, 1)
+        layout.setStretchFactor(self.view, 1)
+        layout.setStretchFactor(progressLayout, 0)
 
         self.setLayout(layout)
 
     def zoom_in(self):
-        # TODO: Implement zoom in functionality
-        pass
+        self.zoom_factor *= 1.2
+        self.update_zoom()
 
     def zoom_out(self):
-        # TODO: Implement zoom out functionality
-        pass
+        self.zoom_factor /= 1.2
+        self.update_zoom()
 
     def fit_to_window(self):
-        # TODO: Implement fit to window functionality
-        pass
+        # Reset zoom factor
+        self.zoom_factor = 1.0
+
+        # Get the size of the view
+        view_size = self.view.size()
+        scene_rect = self.scene.itemsBoundingRect()
+
+        # Check if scene has valid size
+        if scene_rect.width() <= 0 or scene_rect.height() <= 0:
+            # Set default size if no video or invalid size
+            self.videoItem.setSize(QSizeF(view_size.width(), view_size.height()))
+            scene_rect = self.scene.itemsBoundingRect()
+
+        # Calculate scale factors
+        if scene_rect.width() > 0 and scene_rect.height() > 0:
+            scale_x = view_size.width() / scene_rect.width()
+            scale_y = view_size.height() / scene_rect.height()
+
+            # Use the smaller scale factor to fit the entire video
+            scale = min(scale_x, scale_y)
+            self.zoom_factor = scale
+
+            self.update_zoom()
+
+    def update_zoom(self):
+        # Ensure minimum and maximum zoom levels
+        self.zoom_factor = max(0.1, min(self.zoom_factor, 5.0))
+
+        # Save current center point
+        center = self.view.mapToScene(self.view.viewport().rect().center())
+
+        # Reset transformation and apply new scale
+        self.view.resetTransform()
+        self.view.scale(self.zoom_factor, self.zoom_factor)
+
+        # Restore center point
+        self.view.centerOn(center)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Only fit to window if we have a valid video
+        if self.mediaPlayer.media().isNull():
+            return
+        self.fit_to_window()
+
+    def durationChanged(self, duration):
+        self.progressSlider.setRange(0, duration)
+        self.progressSlider.setEnabled(True)
+
+    def positionChanged(self, position):
+        if not self.progressSlider.isSliderDown():
+            self.progressSlider.setValue(position)
+
+    def setPosition(self, position):
+        self.mediaPlayer.setPosition(position)
 
     def play(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
         else:
             self.mediaPlayer.play()
+
+    def sliderPressed(self):
+        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
+            self.mediaPlayer.pause()
+
+    def sliderReleased(self):
+        self.setPosition(self.progressSlider.value())
+        if self.mediaPlayer.state() != QMediaPlayer.PlayingState:
+            self.mediaPlayer.play()
+
+    def sliderMousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            # Calculate position from click
+            value = QStyle.sliderValueFromPosition(
+                self.progressSlider.minimum(),
+                self.progressSlider.maximum(),
+                event.x(),
+                self.progressSlider.width(),
+            )
+            self.progressSlider.setValue(value)
+            self.mediaPlayer.pause()
+            self.setPosition(value)
+
+        # Call original mousePressEvent
+        QSlider.mousePressEvent(self.progressSlider, event)
+
+    def sliderMouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            # Calculate position from release point
+            value = QStyle.sliderValueFromPosition(
+                self.progressSlider.minimum(),
+                self.progressSlider.maximum(),
+                event.x(),
+                self.progressSlider.width(),
+            )
+            self.progressSlider.setValue(value)
+            self.setPosition(value)
+            self.mediaPlayer.play()
+
+        # Call original mouseReleaseEvent
+        QSlider.mouseReleaseEvent(self.progressSlider, event)

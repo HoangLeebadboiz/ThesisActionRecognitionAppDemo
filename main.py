@@ -48,14 +48,12 @@ class MainWindow(QMainWindow):
         self.loginBtn = QPushButton("Login")
         self.signupBtn = QPushButton("Sign Up")
         self.jobComboBox = QComboBox()
-        self.videoWidget = VideoViewer(
-            "C:/Users/HoangLee/Desktop/Recording 2024-12-30 173656.mp4"
-        )
+        self.videoWidget = VideoViewer()
 
         # Disable job combo box and video viewer before login
-        # self.jobComboBox.setEnabled(False)
-        # self.videoWidget.setEnabled(False)
-        # self.videoWidget.toolbar.setEnabled(False)
+        self.jobComboBox.setEnabled(False)
+        self.videoWidget.setEnabled(False)
+        self.videoWidget.toolbar.setEnabled(False)
 
         # Set icons for buttons
         icon_path = os.path.dirname(os.path.abspath(__file__))
@@ -89,6 +87,31 @@ class MainWindow(QMainWindow):
 
         # Create job panel (hidden by default)
         self.jobPanel = None
+
+        # Create reopen job button (hidden by default)
+        self.reopenBtn = QPushButton()
+        self.reopenBtn.setParent(self)  # Make it a child of MainWindow
+        self.reopenBtn.setIcon(QtGui.QIcon(os.path.join(icon_path, "icons/reopen.png")))
+        self.reopenBtn.setIconSize(QtCore.QSize(32, 32))
+        self.reopenBtn.setFixedSize(50, 50)
+        self.reopenBtn.hide()
+        self.reopenBtn.setStyleSheet(
+            """
+            QPushButton {
+                background: #2196F3;
+                border: none;
+                border-radius: 25px;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background: #1976D2;
+            }
+            QPushButton:pressed {
+                background: #0D47A1;
+            }
+            """
+        )
+        self.reopenBtn.clicked.connect(self.reopenJob)
 
         self.initUI()
         self.showMaximized()
@@ -291,12 +314,26 @@ class MainWindow(QMainWindow):
         self.jobComboBox.setCurrentIndex(-1)
         self.jobComboBox.lineEdit().setText(os.path.basename(job_path))
 
+        # Hide reopen button when opening job
+        self.reopenBtn.hide()
+
         # Remove previous panel if exists
-        if self.jobPanel is not None:
-            self.jobPanel.deleteLater()
+        try:
+            if self.jobPanel is not None:
+                self.jobPanel.close()  # Use close() instead of deleteLater()
+                return  # Return to prevent creating new panel during animation
+        except RuntimeError:
+            # Panel was already deleted, just set to None
+            self.jobPanel = None
 
         # Create new panel
         self.jobPanel = JobPanel(job_path)
+
+        # Connect video selection signal
+        self.jobPanel.videoSelected.connect(self.updateVideo)
+
+        # Connect close signal
+        self.jobPanel.closed.connect(self.onJobClosed)
 
         # Set panel geometry
         screen = QApplication.desktop().screenGeometry()
@@ -309,6 +346,28 @@ class MainWindow(QMainWindow):
         # Ensure panel is on top
         self.jobPanel.raise_()
         self.jobPanel.show()
+
+    def updateVideo(self, video_path):
+        if video_path and os.path.exists(
+            video_path
+        ):  # Check if path exists and is not None
+            # Update video widget with new video
+            self.videoWidget = VideoViewer(video_path)
+
+            # Update layout
+            mainLayout = self.widget.layout()
+            mainLayout.replaceWidget(mainLayout.itemAt(1).widget(), self.videoWidget)
+
+    def onJobClosed(self):
+        # Position and show reopen button
+        screen = QApplication.desktop().screenGeometry()
+        self.reopenBtn.move(screen.width() - 70, 20)  # Position in top-right
+        self.reopenBtn.show()
+        self.reopenBtn.raise_()
+
+    def reopenJob(self):
+        if self.job_path:
+            self.onJob(self.job_path)
 
 
 def main():
