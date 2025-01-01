@@ -19,7 +19,9 @@ from PyQt5.QtWidgets import (
 )
 
 from views.create_job import CreateJobView  # Import CreateJobView
+from views.job_panel import JobPanel
 from views.login import LoginView
+from views.open_job import OpenJobView
 from views.signup import SignupView
 from views.video_viewer import VideoViewer
 
@@ -51,9 +53,9 @@ class MainWindow(QMainWindow):
         )
 
         # Disable job combo box and video viewer before login
-        self.jobComboBox.setEnabled(False)
-        self.videoWidget.setEnabled(False)
-        self.videoWidget.toolbar.setEnabled(False)
+        # self.jobComboBox.setEnabled(False)
+        # self.videoWidget.setEnabled(False)
+        # self.videoWidget.toolbar.setEnabled(False)
 
         # Set icons for buttons
         icon_path = os.path.dirname(os.path.abspath(__file__))
@@ -80,6 +82,13 @@ class MainWindow(QMainWindow):
             with open(datajobs_path, "w") as f:
                 json.dump({}, f)
         self.job_path = None
+
+        # Create a container for the job panel
+        self.panelContainer = QWidget(self)
+        self.panelContainer.setFixedWidth(0)  # Start with zero width
+
+        # Create job panel (hidden by default)
+        self.jobPanel = None
 
         self.initUI()
         self.showMaximized()
@@ -269,16 +278,37 @@ class MainWindow(QMainWindow):
         if index == -1:
             pass
         elif index == 0:
-            self.createJobView = CreateJobView(
-                self.workspace_path
-            )  # Pass workspace path
+            self.createJobView = CreateJobView(self.workspace_path)
             self.createJobView.createJobSuccess.connect(self.onJob)
             self.createJobView.show()
+        elif index == 1:  # Open Job
+            self.openJobView = OpenJobView(self.workspace_path)
+            self.openJobView.openJobSuccess.connect(self.onJob)
+            self.openJobView.show()
 
     def onJob(self, job_path):
         self.job_path = job_path
         self.jobComboBox.setCurrentIndex(-1)
         self.jobComboBox.lineEdit().setText(os.path.basename(job_path))
+
+        # Remove previous panel if exists
+        if self.jobPanel is not None:
+            self.jobPanel.deleteLater()
+
+        # Create new panel
+        self.jobPanel = JobPanel(job_path)
+
+        # Set panel geometry
+        screen = QApplication.desktop().screenGeometry()
+        self.jobPanel.setFixedHeight(screen.height())
+        self.jobPanel.move(0, 0)
+
+        # Make panel a child of the main window
+        self.jobPanel.setParent(self)
+
+        # Ensure panel is on top
+        self.jobPanel.raise_()
+        self.jobPanel.show()
 
 
 def main():

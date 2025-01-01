@@ -3,6 +3,7 @@ import os
 
 import qdarktheme
 from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import QPropertyAnimation, Qt
 from PyQt5.QtWidgets import (
     QApplication,
     QGridLayout,
@@ -21,12 +22,22 @@ class SignupView(QWidget):
         super().__init__()
         self.setWindowTitle("Sign Up")
         self.setStyleSheet(qdarktheme.load_stylesheet())
+
         screen = QApplication.desktop().screenGeometry()
         # Set window size
         self.setFixedSize(screen.width() // 3, screen.height() // 2)
 
         # Create header label
         self.headerLabel = QLabel("Create Account")
+
+        # Get screen size and calculate position
+        self.width = screen.width() // 3
+        self.height = screen.height() // 2
+        self.setFixedSize(self.width, self.height)
+
+        # Calculate center position
+        self.center_x = (screen.width() - self.width) // 2
+        self.center_y = (screen.height() - self.height) // 2
 
         # Create form fields
         self.usernameLabel = QLabel("Username")
