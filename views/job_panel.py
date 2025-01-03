@@ -1,5 +1,6 @@
 import os
 
+import cv2
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QPropertyAnimation, Qt
 from PyQt5.QtWidgets import (
@@ -13,17 +14,22 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
+from tools.video_preprocessing import VideoPreprocessing
+from views.video_viewer import VideoViewer
+
 
 class JobPanel(QFrame):
     # Add signal to communicate with main window
     videoSelected = QtCore.pyqtSignal(str)  # Signal to emit video path
     closed = QtCore.pyqtSignal()  # Add closed signal
+    processedVideoReady = QtCore.pyqtSignal(list, int)  # For processed frames
 
     def __init__(self, job_path: str):
         super().__init__()
@@ -224,6 +230,18 @@ class JobPanel(QFrame):
         self.InitUI()
         self.setupAnimation()
 
+        # Store model paths
+        self.yolo_path = os.path.join(
+            os.path.dirname(__file__), "../models/attention_pp_yolo11s.pt"
+        )
+
+        # Connect signals
+        self.modeComboBox.currentTextChanged.connect(self.onModeChanged)
+        self.showVideosBtn.clicked.connect(self.showVideos)
+
+        # Initially disable add video button if mode is None
+        self.addVideoBtn.setEnabled(False)
+
     def InitUI(self):
         # Main layout
         mainLayout = QVBoxLayout()
@@ -390,38 +408,8 @@ class JobPanel(QFrame):
         pass
 
     def showVideos(self):
-        # Open file dialog to choose video
+        # Get video path
         file_dialog = QFileDialog()
-        file_dialog.setStyleSheet(
-            """
-            QFileDialog {
-                background: #1E1E1E;
-            }
-            QFileDialog QLabel {
-                font-size: 16px;
-            }
-            QFileDialog QPushButton {
-                font-size: 14px;
-                padding: 6px 12px;
-                border-radius: 4px;
-                background: #2196F3;
-                border: none;
-                color: white;
-                min-width: 80px;
-            }
-            QFileDialog QPushButton:hover {
-                background: #1976D2;
-            }
-            QFileDialog QLineEdit {
-                font-size: 14px;
-                padding: 6px;
-                border: 1px solid #555;
-                border-radius: 4px;
-                background: #333;
-            }
-        """
-        )
-
         video_path, _ = file_dialog.getOpenFileName(
             self,
             "Select Video",
@@ -429,8 +417,44 @@ class JobPanel(QFrame):
             "Video Files (*.mp4 *.avi *.mkv *.mov);;All Files (*)",
         )
 
-        if video_path:
+        if not video_path:
+            return
+
+        if self.modeComboBox.currentText() == "None":
+            # Just emit the video path for direct playback
             self.videoSelected.emit(video_path)
+        else:
+            # Process video for inference mode
+            # Get settings from input fields
+            frame_size = (self.widthInput.value(), self.heightInput.value())
+            fps = self.fpsInput.value()
+
+            try:
+                # Initialize video preprocessing
+                video_processor = VideoPreprocessing(
+                    video_path=video_path,
+                    frame_size=frame_size,
+                    fps=fps,
+                    yolo_path=self.yolo_path,
+                )
+
+                # Process video
+                frames_dict = video_processor.process_video()
+                processed_frames = frames_dict["processed_frames"]
+
+                # Convert frames from BGR to RGB
+                rgb_frames = []
+                for frame in processed_frames:
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    rgb_frames.append(frame_rgb)
+
+                # Emit signal with processed frames and fps
+                self.processedVideoReady.emit(rgb_frames, fps)
+
+            except Exception as e:
+                QMessageBox.critical(
+                    self, "Error", f"Error processing video: {str(e)}", QMessageBox.Ok
+                )
 
     def closePanel(self):
         # Create reverse animation
@@ -452,3 +476,63 @@ class JobPanel(QFrame):
 
         self.closeAnimation.finished.connect(onFinished)
         self.closeAnimation.start()
+
+    def onModeChanged(self, mode: str):
+        """Handle mode selection change"""
+        # Enable show video button for all modes
+        self.showVideosBtn.setEnabled(True)
+
+        # Only disable add video button
+        self.addVideoBtn.setEnabled(False)
+
+        # Update button styles
+        self.updateButtonStyle(self.addVideoBtn, False)
+        self.updateButtonStyle(self.showVideosBtn, True)
+
+    def updateButtonStyle(self, button, enabled):
+        """Update button style based on enabled state"""
+        if not enabled:
+            button.setStyleSheet(
+                """
+                QPushButton {
+                    font-size: 30px;
+                    font-weight: bold;
+                    padding: 15px 25px;
+                    border-radius: 10px;
+                    background: #2A2A2A;
+                    border: 2px solid #444;
+                    color: #666666;
+                    min-width: 160px;
+                    opacity: 0.7;
+                }
+                QPushButton:disabled {
+                    background: #2A2A2A;
+                    border: 2px solid #444;
+                    color: #666666;
+                }
+                """
+            )
+        else:
+            button.setStyleSheet(
+                """
+                QPushButton {
+                    font-size: 30px;
+                    font-weight: bold;
+                    padding: 15px 25px;
+                    border-radius: 10px;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #2196F3, stop:1 #1976D2);
+                    border: none;
+                    color: white;
+                    min-width: 160px;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #42A5F5, stop:1 #1E88E5);
+                }
+                QPushButton:pressed {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #1976D2, stop:1 #1565C0);
+                }
+                """
+            )

@@ -1,12 +1,13 @@
 import os
 from typing import Optional
 
-from PyQt5 import QtGui
+from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QRectF, QSize, QSizeF, Qt, QUrl
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QGraphicsVideoItem, QVideoWidget
 from PyQt5.QtWidgets import (
     QAction,
+    QApplication,
     QGraphicsScene,
     QGraphicsView,
     QHBoxLayout,
@@ -22,8 +23,91 @@ from PyQt5.QtWidgets import (
 class VideoViewer(QWidget):
     def __init__(self, video_path: str = None):
         super().__init__()
-        self.video_path = video_path
-        self.zoom_factor = 1.0  # Track zoom level
+
+        # Create media player first
+        self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+
+        # Create and setup video item
+        self.videoItem = QGraphicsVideoItem()
+        self.mediaPlayer.setVideoOutput(self.videoItem)
+
+        # Create scene and add video item
+        self.scene = QGraphicsScene()
+        self.scene.addItem(self.videoItem)
+
+        # Create and setup view
+        self.view = QGraphicsView(self.scene)
+        self.setupView()  # Move view setup to separate method
+
+        # Load video if path provided
+        if video_path and os.path.exists(video_path):
+            self.loadVideo(video_path)
+
+        # Rest of initialization...
+        self.setupUI()
+
+    def loadVideo(self, video_path):
+        """Load video without showing file dialog"""
+        media = QMediaContent(QUrl.fromLocalFile(os.path.abspath(video_path)))
+        self.mediaPlayer.setMedia(media)
+
+    def setupView(self):
+        self.view.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.view.setStyleSheet(
+            """
+            QGraphicsView {
+                background: #121212;
+                border: 2px solid #333333;
+                border-radius: 12px;
+            }
+        """
+        )
+
+    def setupUI(self):
+        layout = QVBoxLayout()
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Get icon path
+        icon_path = os.path.dirname(os.path.abspath(__file__))
+
+        # Create actions with icons
+        zoom_in_action = QAction(
+            QtGui.QIcon(os.path.join(icon_path, "../icons/zoom-in.png")),
+            "Zoom In",
+            self,
+        )
+        zoom_out_action = QAction(
+            QtGui.QIcon(os.path.join(icon_path, "../icons/zoom-out.png")),
+            "Zoom Out",
+            self,
+        )
+        fit_action = QAction(
+            QtGui.QIcon(os.path.join(icon_path, "../icons/fit-to-window.png")),
+            "Fit to Window",
+            self,
+        )
+        play_action = QAction(
+            QtGui.QIcon(os.path.join(icon_path, "../icons/play.png")), "Play", self
+        )
+
+        # Style toolbar buttons
+        button_style = """
+            QToolButton {
+                background: transparent;
+                border: none;
+                border-radius: 4px;
+                padding: 6px;
+            }
+            QToolButton:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            QToolButton:pressed {
+                background: rgba(255, 255, 255, 0.2);
+            }
+        """
 
         # Create toolbar
         self.toolbar = QToolBar()
@@ -38,36 +122,28 @@ class VideoViewer(QWidget):
         """
         )
 
-        # Create graphics scene and view for zooming
-        self.scene = QGraphicsScene()
-        self.view = QGraphicsView(self.scene)
-        self.view.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
-        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.view.setStyleSheet(
-            """
-            QGraphicsView {
-                background: #121212;
-                border: 2px solid #333333;
-                border-radius: 12px;
-            }
-        """
-        )
+        # Add actions to toolbar
+        self.toolbar.addAction(zoom_in_action)
+        self.toolbar.addAction(zoom_out_action)
+        self.toolbar.addAction(fit_action)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(play_action)
 
-        # Create video item
-        self.videoItem = QGraphicsVideoItem()
-        self.scene.addItem(self.videoItem)
+        # Set toolbar button size
+        for action in self.toolbar.actions():
+            if isinstance(action, QAction):
+                button = QToolButton()
+                button.setDefaultAction(action)
+                button.setStyleSheet(button_style)
+                button.setIconSize(QSize(24, 24))
+                button.setFixedSize(36, 36)
+                # self.toolbar.addWidget(button)
 
-        # Create media player
-        self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
-        self.mediaPlayer.setVideoOutput(self.videoItem)
-
-        # Setup media player
-        if video_path and os.path.exists(video_path):
-            media_content = QMediaContent(
-                QUrl.fromLocalFile(os.path.abspath(video_path))
-            )
-            self.mediaPlayer.setMedia(media_content)
+        # Connect actions
+        zoom_in_action.triggered.connect(self.zoom_in)
+        zoom_out_action.triggered.connect(self.zoom_out)
+        fit_action.triggered.connect(self.fit_to_window)
+        play_action.triggered.connect(self.play)
 
         # Create progress slider
         self.progressSlider = QSlider(Qt.Horizontal)
@@ -120,75 +196,6 @@ class VideoViewer(QWidget):
         self.progressSlider.mousePressEvent = (
             self.sliderMousePressEvent
         )  # Override mouse press
-
-        self.InitUI()
-
-    def InitUI(self):
-        layout = QVBoxLayout()
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        # Get icon path
-        icon_path = os.path.dirname(os.path.abspath(__file__))
-
-        # Create actions with icons
-        zoom_in_action = QAction(
-            QtGui.QIcon(os.path.join(icon_path, "../icons/zoom-in.png")),
-            "Zoom In",
-            self,
-        )
-        zoom_out_action = QAction(
-            QtGui.QIcon(os.path.join(icon_path, "../icons/zoom-out.png")),
-            "Zoom Out",
-            self,
-        )
-        fit_action = QAction(
-            QtGui.QIcon(os.path.join(icon_path, "../icons/fit-to-window.png")),
-            "Fit to Window",
-            self,
-        )
-        play_action = QAction(
-            QtGui.QIcon(os.path.join(icon_path, "../icons/play.png")), "Play", self
-        )
-
-        # Style toolbar buttons
-        button_style = """
-            QToolButton {
-                background: transparent;
-                border: none;
-                border-radius: 4px;
-                padding: 6px;
-            }
-            QToolButton:hover {
-                background: rgba(255, 255, 255, 0.1);
-            }
-            QToolButton:pressed {
-                background: rgba(255, 255, 255, 0.2);
-            }
-        """
-
-        # Add actions to toolbar
-        self.toolbar.addAction(zoom_in_action)
-        self.toolbar.addAction(zoom_out_action)
-        self.toolbar.addAction(fit_action)
-        self.toolbar.addSeparator()
-        self.toolbar.addAction(play_action)
-
-        # Set toolbar button size
-        for action in self.toolbar.actions():
-            if isinstance(action, QAction):
-                button = QToolButton()
-                button.setDefaultAction(action)
-                button.setStyleSheet(button_style)
-                button.setIconSize(QSize(24, 24))
-                button.setFixedSize(36, 36)
-                # self.toolbar.addWidget(button)
-
-        # Connect actions
-        zoom_in_action.triggered.connect(self.zoom_in)
-        zoom_out_action.triggered.connect(self.zoom_out)
-        fit_action.triggered.connect(self.fit_to_window)
-        play_action.triggered.connect(self.play)
 
         # Create layout for progress bar
         progressLayout = QHBoxLayout()
@@ -318,3 +325,43 @@ class VideoViewer(QWidget):
 
         # Call original mouseReleaseEvent
         QSlider.mouseReleaseEvent(self.progressSlider, event)
+
+    def playFrames(self, frames, fps):
+        """Play a list of frames at specified fps"""
+        if not frames:
+            return
+
+        # Get initial frame size for consistent display
+        init_height, init_width = frames[0].shape[:2]
+
+        # Set scene size to match initial frame
+        self.scene.setSceneRect(0, 0, init_width, init_height)
+
+        for frame in frames:
+            # Convert numpy array to QImage
+            height, width, channel = frame.shape
+            bytes_per_line = 3 * width
+            q_img = QtGui.QImage(
+                frame.data,
+                width,
+                height,
+                bytes_per_line,
+                QtGui.QImage.Format_RGB888,
+            )
+
+            # Convert to QPixmap
+            pixmap = QtGui.QPixmap.fromImage(q_img)
+
+            # Create QGraphicsPixmapItem and add to scene
+            if hasattr(self, "pixmap_item"):
+                self.scene.removeItem(self.pixmap_item)
+            self.pixmap_item = self.scene.addPixmap(pixmap)
+
+            # Center the pixmap in scene
+            self.pixmap_item.setPos(
+                (init_width - width) / 2, (init_height - height) / 2
+            )
+
+            # Process events and add delay
+            QApplication.processEvents()
+            QtCore.QThread.msleep(int(1000 / fps))

@@ -113,6 +113,9 @@ class MainWindow(QMainWindow):
         )
         self.reopenBtn.clicked.connect(self.reopenJob)
 
+        # Store video viewer reference
+        self.videoViewer = None
+
         self.initUI()
         self.showMaximized()
 
@@ -331,6 +334,7 @@ class MainWindow(QMainWindow):
 
         # Connect video selection signal
         self.jobPanel.videoSelected.connect(self.updateVideo)
+        self.jobPanel.processedVideoReady.connect(self.showProcessedVideo)
 
         # Connect close signal
         self.jobPanel.closed.connect(self.onJobClosed)
@@ -348,15 +352,17 @@ class MainWindow(QMainWindow):
         self.jobPanel.show()
 
     def updateVideo(self, video_path):
-        if video_path and os.path.exists(
-            video_path
-        ):  # Check if path exists and is not None
-            # Update video widget with new video
+        """Update video widget with new video"""
+        if video_path and os.path.exists(video_path):
+            # Create new video viewer with path
             self.videoWidget = VideoViewer(video_path)
 
             # Update layout
             mainLayout = self.widget.layout()
             mainLayout.replaceWidget(mainLayout.itemAt(1).widget(), self.videoWidget)
+
+            # Start playback
+            self.videoWidget.mediaPlayer.play()
 
     def onJobClosed(self):
         # Position and show reopen button
@@ -368,6 +374,13 @@ class MainWindow(QMainWindow):
     def reopenJob(self):
         if self.job_path:
             self.onJob(self.job_path)
+
+    def showProcessedVideo(self, frames, fps):
+        """Display processed video frames in the existing video viewer"""
+        if frames:
+            # Update layout to ensure video viewer is visible
+            mainLayout = self.widget.layout()
+            self.videoWidget.playFrames(frames, fps)
 
 
 def main():
