@@ -232,7 +232,7 @@ class JobPanel(QFrame):
 
         # Store model paths
         self.yolo_path = os.path.join(
-            os.path.dirname(__file__), "../models/attention_pp_yolo11s.pt"
+            os.path.dirname(__file__), "../models/yolo11s-pose.pt"
         )
 
         # Connect signals

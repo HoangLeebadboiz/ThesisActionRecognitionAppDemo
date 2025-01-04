@@ -80,6 +80,9 @@ class VideoPreprocessing:
 
         for group in groups:
             if len(group) < 2:  # Minimum 2 people
+                if self.previous_center:
+                    prev_x, prev_y = self.previous_center
+                    self.selected_group = (prev_x, prev_y)
                 continue
 
             if len(group) > 4:  # Maximum 4 people
@@ -95,7 +98,7 @@ class VideoPreprocessing:
                     self.euclidean_distance(
                         (avg_center_x, avg_center_y), (prev_x, prev_y)
                     )
-                    > 50
+                    > 20
                 ):
                     self.selected_group = (prev_x, prev_y)
                     continue
@@ -154,7 +157,6 @@ class VideoPreprocessing:
 
             if frame_count % sample_interval == 0:
                 original_size = frame.shape
-                print(f"Original size: {original_size}")
                 processed_frame, attention_frame = self.process(frame)
 
                 if attention_frame is not None:
