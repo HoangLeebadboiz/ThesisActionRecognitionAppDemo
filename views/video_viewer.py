@@ -380,7 +380,7 @@ class VideoViewer(QWidget):
             QApplication.processEvents()
             QtCore.QThread.msleep(int(1000 / fps))
 
-    def loadCamera(self, fps):
+    def loadCamera(self, fps, inference_mode=False, frame_size=(640, 480)):
         """Load camera feed"""
         try:
             # Stop any playing video
@@ -389,11 +389,29 @@ class VideoViewer(QWidget):
             # Initialize camera
             self.cap = cv2.VideoCapture(0)
             if not self.cap.isOpened():
-                print("Failed to open camera")
                 return False
 
             # Set camera properties
             self.cap.set(cv2.CAP_PROP_FPS, fps)
+
+            # Initialize processor for inference mode
+            if inference_mode:
+                from tools.camera_streaming_preprocessing import (
+                    CameraStreamingPreprocessing,
+                )
+
+                # Get absolute path to YOLO model
+                yolo_path = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                    "models",
+                    "yolo11s-pose.pt",  # Use existing YOLO model
+                )
+
+                self.processor = CameraStreamingPreprocessing(
+                    frame_size=frame_size,
+                    fps=fps,
+                    yolo_path=yolo_path,
+                )
 
             # Create timer for frame updates
             self.timer = QtCore.QTimer(self)
@@ -410,20 +428,24 @@ class VideoViewer(QWidget):
     def updateFrame(self):
         """Update frame from camera"""
         if not hasattr(self, "cap") or not self.cap.isOpened():
-            print("Camera not properly initialized")
             return
 
         try:
             ret, frame = self.cap.read()
             if ret:
-                # Convert frame to RGB for Qt
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                height, width, channel = frame_rgb.shape
+                if hasattr(self, "processor"):
+                    # Process frame with inference
+                    processed_frame = self.processor.update(frame)
+                else:
+                    # Just convert frame for display
+                    processed_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                height, width, channel = processed_frame.shape
                 bytes_per_line = 3 * width
 
                 # Convert to QImage
                 q_img = QtGui.QImage(
-                    frame_rgb.data,
+                    processed_frame.data,
                     width,
                     height,
                     bytes_per_line,
@@ -433,15 +455,13 @@ class VideoViewer(QWidget):
                 # Convert to QPixmap and display
                 pixmap = QtGui.QPixmap.fromImage(q_img)
 
-                # Create QGraphicsPixmapItem and add to scene
+                # Update scene
                 if hasattr(self, "pixmap_item"):
                     self.scene.removeItem(self.pixmap_item)
                 self.pixmap_item = self.scene.addPixmap(pixmap)
 
                 # Fit frame to view
                 self.view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
-            else:
-                print("Failed to read frame from camera")
 
         except Exception as e:
             print(f"Frame update error: {str(e)}")

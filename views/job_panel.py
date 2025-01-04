@@ -465,18 +465,16 @@ class JobPanel(QFrame):
                     )
 
         elif self.sourceComboBox.currentText() == "Camera":
-            if self.modeComboBox.currentText() == "None":
-                # Toggle camera
-                fps = self.fpsInput.value()
-                self.videoSelected.emit("camera://0")  # Special URL for camera
+            # Get settings from input fields
+            frame_size = (self.widthInput.value(), self.heightInput.value())
+            fps = self.fpsInput.value()
 
-                # Update button text based on camera state
-                if hasattr(self, "last_camera_state") and self.last_camera_state:
-                    self.showVideosBtn.setText("Show Video")
-                    self.last_camera_state = False
-                else:
-                    self.showVideosBtn.setText("Stop Video")
-                    self.last_camera_state = True
+            if self.modeComboBox.currentText() == "None":
+                self.videoSelected.emit("camera://0")
+            else:  # Inference mode
+                self.videoSelected.emit(
+                    f"camera://0?inference=true&fps={fps}&width={frame_size[0]}&height={frame_size[1]}"
+                )
 
     def closePanel(self):
         # Create reverse animation

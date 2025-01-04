@@ -353,19 +353,38 @@ class MainWindow(QMainWindow):
 
     def updateVideo(self, video_path):
         """Update video widget with new video"""
-        if video_path == "camera://0":  # Special URL for camera
-            # Get fps from job panel
-            fps = self.jobPanel.fpsInput.value()
+        if video_path.startswith("camera://"):
+            # Parse camera URL for settings
+            if "inference=true" in video_path:
+                # Get settings from URL
+                import urllib.parse as urlparse
 
-            # Use existing video viewer
-            if hasattr(self, "videoWidget"):
-                self.videoWidget.loadCamera(fps)
-            else:
-                self.videoWidget = VideoViewer()
-                mainLayout = self.widget.layout()
-                mainLayout.replaceWidget(
-                    mainLayout.itemAt(1).widget(), self.videoWidget
+                params = dict(urlparse.parse_qs(video_path.split("?")[1]))
+                fps = int(params["fps"][0])
+                width = int(params["width"][0])
+                height = int(params["height"][0])
+
+                # Create or reuse video viewer with inference
+                if not hasattr(self, "videoWidget"):
+                    self.videoWidget = VideoViewer()
+                    mainLayout = self.widget.layout()
+                    mainLayout.replaceWidget(
+                        mainLayout.itemAt(1).widget(), self.videoWidget
+                    )
+
+                # Start camera with inference
+                self.videoWidget.loadCamera(
+                    fps, inference_mode=True, frame_size=(width, height)
                 )
+            else:
+                # Normal camera mode
+                fps = self.jobPanel.fpsInput.value()
+                if not hasattr(self, "videoWidget"):
+                    self.videoWidget = VideoViewer()
+                    mainLayout = self.widget.layout()
+                    mainLayout.replaceWidget(
+                        mainLayout.itemAt(1).widget(), self.videoWidget
+                    )
                 self.videoWidget.loadCamera(fps)
 
         else:
