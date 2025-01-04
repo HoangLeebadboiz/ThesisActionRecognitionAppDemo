@@ -80,6 +80,7 @@ class VideoProcessing:
                     )
 
         groups = self.group_people(centers)
+<<<<<<< Updated upstream
 
         print(f'Group people: {groups}')
         print(f'1st Previous = {self.previous_center}')
@@ -90,6 +91,16 @@ class VideoProcessing:
             if len(group) < 2:  # Giới hạn dưới là 2 người
                 prev_x, prev_y = self.previous_center
                 self.selected_group = (prev_x, prev_y)
+=======
+        attention_fr = None
+        print(f"Groups: {groups}")
+
+        for group in groups:
+            if len(group) < 2:  # Minimum 2 people
+                if self.previous_center:
+                    prev_x, prev_y = self.previous_center
+                    self.selected_group = (prev_x, prev_y)
+>>>>>>> Stashed changes
                 continue
 
             if len(group) > 4:  # Giới hạn tối đa 4 người
@@ -175,6 +186,16 @@ class VideoProcessing:
         # Calculate frame sampling interval
         sample_interval = max(1, int(video_fps / self.fps))
         frame_count = 0
+<<<<<<< Updated upstream
+=======
+        current_idx = 0
+
+        # Initialize VideoMAE model
+        from tools.run_VideoMAEmodel import RunVideoMAEmodel
+        # from run_VideoMAEmodel import RunVideoMAEmodel
+
+        videomae = RunVideoMAEmodel("models/VideoMAE")
+>>>>>>> Stashed changes
 
         while cap.isOpened():
             ret, frame = cap.read()
@@ -183,12 +204,17 @@ class VideoProcessing:
 
             # Process frame according to fps
             if frame_count % sample_interval == 0:
+<<<<<<< Updated upstream
                 # try:
                 # attention_frame = None
                 # Store original frame
                 original_frames.append(frame.copy())
 
                 # Process frame and get results
+=======
+                original_size = frame.shape
+                # print(f"Original size: {original_size}")
+>>>>>>> Stashed changes
                 processed_frame, attention_frame = self.process(frame)
 
                 # print(f"Frame size: {processed_frame.shape}")
@@ -220,6 +246,7 @@ class VideoProcessing:
             "attention_frames": attention_frames,  # Cropped attention frames
             "total_frames": total_frames,
         }
+<<<<<<< Updated upstream
 
     def show_processed_video(self, frames, fps=30, window_name="Processed Video"):
         """Show processed frames as video
@@ -257,3 +284,17 @@ processed_frames = frames_dict["attention_frames"]
 
 # Show the processed video
 video_preprocessing.show_processed_video(processed_frames, fps=30)
+=======
+    
+# # Example usage:
+# video_preprocessing = VideoPreprocessing(
+#     video_path="D:\\_KhanhToanLevi_\\241_SEMESTER\\EE4009 - Project2\\Data_test\\Test_00002_KhanhToan.mp4",
+#     frame_size = (640, 480),
+#     fps=10,
+#     yolo_path="models\yolo11s-pose.pt",
+# )
+
+# frames_dict = video_preprocessing.process_video()
+# processed_frames = frames_dict["processed_frames"]
+
+>>>>>>> Stashed changes
