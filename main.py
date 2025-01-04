@@ -353,16 +353,32 @@ class MainWindow(QMainWindow):
 
     def updateVideo(self, video_path):
         """Update video widget with new video"""
-        if video_path and os.path.exists(video_path):
-            # Create new video viewer with path
-            self.videoWidget = VideoViewer(video_path)
+        if video_path == "camera://0":  # Special URL for camera
+            # Get fps from job panel
+            fps = self.jobPanel.fpsInput.value()
 
-            # Update layout
-            mainLayout = self.widget.layout()
-            mainLayout.replaceWidget(mainLayout.itemAt(1).widget(), self.videoWidget)
+            # Use existing video viewer
+            if hasattr(self, "videoWidget"):
+                self.videoWidget.loadCamera(fps)
+            else:
+                self.videoWidget = VideoViewer()
+                mainLayout = self.widget.layout()
+                mainLayout.replaceWidget(
+                    mainLayout.itemAt(1).widget(), self.videoWidget
+                )
+                self.videoWidget.loadCamera(fps)
 
-            # Start playback
-            self.videoWidget.mediaPlayer.play()
+        else:
+            # Handle normal video file
+            if video_path and os.path.exists(video_path):
+                if hasattr(self, "videoWidget"):
+                    self.videoWidget.loadVideo(video_path)
+                else:
+                    self.videoWidget = VideoViewer(video_path)
+                    mainLayout = self.widget.layout()
+                    mainLayout.replaceWidget(
+                        mainLayout.itemAt(1).widget(), self.videoWidget
+                    )
 
     def onJobClosed(self):
         # Position and show reopen button

@@ -66,6 +66,7 @@ class JobPanel(QFrame):
         # Add mode and model combo boxes
         self.modeComboBox = QComboBox()
         self.modelComboBox = QComboBox()
+        self.sourceComboBox = QComboBox()
 
         # Add video control buttons
         self.showVideosBtn = QPushButton("Show Video")
@@ -74,8 +75,9 @@ class JobPanel(QFrame):
         # Setup combo boxes
         self.modeComboBox.addItems(["None", "Train", "Inference"])
         self.modelComboBox.addItems(["VideoMAE", "ViViT", "Pose+Transformer"])
+        self.sourceComboBox.addItems(["Video", "Camera"])
 
-        # Style combo boxes
+        # Style all combo boxes
         combo_style = """
             QComboBox {
                 font-size: 30px;
@@ -118,8 +120,10 @@ class JobPanel(QFrame):
                 background: rgba(33, 150, 243, 0.1);
             }
         """
-        self.modeComboBox.setStyleSheet(combo_style)
-        self.modelComboBox.setStyleSheet(combo_style)
+
+        # Apply style to all combo boxes
+        for combo in [self.modeComboBox, self.modelComboBox, self.sourceComboBox]:
+            combo.setStyleSheet(combo_style)
 
         # Style close button
         self.closeBtn.setStyleSheet(
@@ -301,12 +305,13 @@ class JobPanel(QFrame):
         formLayout.setSpacing(15)
         formLayout.setContentsMargins(20, 25, 20, 25)
 
-        # Add form fields including new combo boxes
+        # Add form fields in correct order
         formLayout.addRow("Width:", self.widthInput)
         formLayout.addRow("Height:", self.heightInput)
         formLayout.addRow("FPS:", self.fpsInput)
         formLayout.addRow("Mode:", self.modeComboBox)
         formLayout.addRow("Model:", self.modelComboBox)
+        formLayout.addRow("Source:", self.sourceComboBox)  # Move to bottom of form
 
         videoSettingsGroup.setLayout(formLayout)
 
@@ -408,53 +413,70 @@ class JobPanel(QFrame):
         pass
 
     def showVideos(self):
-        # Get video path
-        file_dialog = QFileDialog()
-        video_path, _ = file_dialog.getOpenFileName(
-            self,
-            "Select Video",
-            "",
-            "Video Files (*.mp4 *.avi *.mkv *.mov);;All Files (*)",
-        )
+        if self.sourceComboBox.currentText() == "Video":
+            # Existing video file selection code
+            file_dialog = QFileDialog()
+            video_path, _ = file_dialog.getOpenFileName(
+                self,
+                "Select Video",
+                "",
+                "Video Files (*.mp4 *.avi *.mkv *.mov);;All Files (*)",
+            )
 
-        if not video_path:
-            return
+            if not video_path:
+                return
 
-        if self.modeComboBox.currentText() == "None":
-            # Just emit the video path for direct playback
-            self.videoSelected.emit(video_path)
-        else:
-            # Process video for inference mode
-            # Get settings from input fields
-            frame_size = (self.widthInput.value(), self.heightInput.value())
-            fps = self.fpsInput.value()
+            if self.modeComboBox.currentText() == "None":
+                self.videoSelected.emit(video_path)
+            else:
+                # Process video for inference mode
+                # Get settings from input fields
+                frame_size = (self.widthInput.value(), self.heightInput.value())
+                fps = self.fpsInput.value()
 
-            try:
-                # Initialize video preprocessing
-                video_processor = VideoPreprocessing(
-                    video_path=video_path,
-                    frame_size=frame_size,
-                    fps=fps,
-                    yolo_path=self.yolo_path,
-                )
+                try:
+                    # Initialize video preprocessing
+                    video_processor = VideoPreprocessing(
+                        video_path=video_path,
+                        frame_size=frame_size,
+                        fps=fps,
+                        yolo_path=self.yolo_path,
+                    )
 
-                # Process video
-                frames_dict = video_processor.process_video()
-                processed_frames = frames_dict["processed_frames"]
+                    # Process video
+                    frames_dict = video_processor.process_video()
+                    processed_frames = frames_dict["processed_frames"]
 
-                # Convert frames from BGR to RGB
-                rgb_frames = []
-                for frame in processed_frames:
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    rgb_frames.append(frame_rgb)
+                    # Convert frames from BGR to RGB
+                    rgb_frames = []
+                    for frame in processed_frames:
+                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        rgb_frames.append(frame_rgb)
 
-                # Emit signal with processed frames and fps
-                self.processedVideoReady.emit(rgb_frames, fps)
+                    # Emit signal with processed frames and fps
+                    self.processedVideoReady.emit(rgb_frames, fps)
 
-            except Exception as e:
-                QMessageBox.critical(
-                    self, "Error", f"Error processing video: {str(e)}", QMessageBox.Ok
-                )
+                except Exception as e:
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"Error processing video: {str(e)}",
+                        QMessageBox.Ok,
+                    )
+
+        elif self.sourceComboBox.currentText() == "Camera":
+            if self.modeComboBox.currentText() == "None":
+                # Toggle camera
+                fps = self.fpsInput.value()
+                self.videoSelected.emit("camera://0")  # Special URL for camera
+
+                # Update button text based on camera state
+                if hasattr(self, "last_camera_state") and self.last_camera_state:
+                    self.showVideosBtn.setText("Show Video")
+                    self.last_camera_state = False
+                else:
+                    self.showVideosBtn.setText("Stop Video")
+                    self.last_camera_state = True
 
     def closePanel(self):
         # Create reverse animation

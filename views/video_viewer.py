@@ -1,6 +1,7 @@
 import os
 from typing import Optional
 
+import cv2
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QRectF, QSize, QSizeF, Qt, QUrl
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
@@ -24,6 +25,9 @@ class VideoViewer(QWidget):
     def __init__(self, video_path: str = None):
         super().__init__()
 
+        # Initialize zoom factor
+        self.zoom_factor = 1.0
+
         # Create media player first
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
 
@@ -46,10 +50,20 @@ class VideoViewer(QWidget):
         # Rest of initialization...
         self.setupUI()
 
+        self.is_camera_running = False  # Add camera state tracking
+
     def loadVideo(self, video_path):
-        """Load video without showing file dialog"""
+        """Load video file"""
+        # Stop camera if running
+        if hasattr(self, "cap") and self.is_camera_running:
+            self.cap.release()
+            self.timer.stop()
+            self.is_camera_running = False
+
+        # Load video
         media = QMediaContent(QUrl.fromLocalFile(os.path.abspath(video_path)))
         self.mediaPlayer.setMedia(media)
+        self.mediaPlayer.play()
 
     def setupView(self):
         self.view.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
@@ -365,3 +379,69 @@ class VideoViewer(QWidget):
             # Process events and add delay
             QApplication.processEvents()
             QtCore.QThread.msleep(int(1000 / fps))
+
+    def loadCamera(self, fps):
+        """Load camera feed"""
+        try:
+            # Stop any playing video
+            self.mediaPlayer.stop()
+
+            # Initialize camera
+            self.cap = cv2.VideoCapture(0)
+            if not self.cap.isOpened():
+                print("Failed to open camera")
+                return False
+
+            # Set camera properties
+            self.cap.set(cv2.CAP_PROP_FPS, fps)
+
+            # Create timer for frame updates
+            self.timer = QtCore.QTimer(self)
+            self.timer.timeout.connect(self.updateFrame)
+            self.timer.start(1000 // fps)
+
+            self.is_camera_running = True
+            return True
+
+        except Exception as e:
+            print(f"Camera error: {str(e)}")
+            return False
+
+    def updateFrame(self):
+        """Update frame from camera"""
+        if not hasattr(self, "cap") or not self.cap.isOpened():
+            print("Camera not properly initialized")
+            return
+
+        try:
+            ret, frame = self.cap.read()
+            if ret:
+                # Convert frame to RGB for Qt
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                height, width, channel = frame_rgb.shape
+                bytes_per_line = 3 * width
+
+                # Convert to QImage
+                q_img = QtGui.QImage(
+                    frame_rgb.data,
+                    width,
+                    height,
+                    bytes_per_line,
+                    QtGui.QImage.Format_RGB888,
+                )
+
+                # Convert to QPixmap and display
+                pixmap = QtGui.QPixmap.fromImage(q_img)
+
+                # Create QGraphicsPixmapItem and add to scene
+                if hasattr(self, "pixmap_item"):
+                    self.scene.removeItem(self.pixmap_item)
+                self.pixmap_item = self.scene.addPixmap(pixmap)
+
+                # Fit frame to view
+                self.view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
+            else:
+                print("Failed to read frame from camera")
+
+        except Exception as e:
+            print(f"Frame update error: {str(e)}")
