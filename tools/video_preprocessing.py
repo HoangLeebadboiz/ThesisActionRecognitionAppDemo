@@ -80,6 +80,9 @@ class VideoPreprocessing:
 
         for group in groups:
             if len(group) < 2:  # Minimum 2 people
+                if self.previous_center:
+                    prev_x, prev_y = self.previous_center
+                    self.selected_group = (prev_x, prev_y)
                 continue
 
             if len(group) > 4:  # Maximum 4 people
