@@ -187,6 +187,25 @@ class CameraStreamingPreprocessing:
 
     def cleanup(self):
         """Clean up resources"""
-        self.attention_queue.put(None)  # Signal thread to stop
-        if hasattr(self, "prediction_thread"):
-            self.prediction_thread.join()
+        try:
+            print("Stopping prediction thread...")
+            # Signal thread to stop
+            self.attention_queue.put(None)
+
+            # Wait for thread to finish
+            if hasattr(self, "prediction_thread"):
+                self.prediction_thread.join(timeout=1.0)  # Wait up to 1 second
+                if self.prediction_thread.is_alive():
+                    print("Warning: Thread did not stop cleanly")
+                else:
+                    print("Prediction thread stopped successfully")
+
+            # Clear queues and resources
+            while not self.attention_queue.empty():
+                self.attention_queue.get()
+
+            self.attention_frames = []
+            self.current_prediction = None
+
+        except Exception as e:
+            print(f"Error during cleanup: {str(e)}")

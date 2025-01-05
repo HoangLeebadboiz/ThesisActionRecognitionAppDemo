@@ -465,3 +465,33 @@ class VideoViewer(QWidget):
 
         except Exception as e:
             print(f"Frame update error: {str(e)}")
+
+    def stopCamera(self):
+        """Stop camera and cleanup resources"""
+        try:
+            # Stop timer first
+            if hasattr(self, "timer"):
+                self.timer.stop()
+
+            # Stop camera
+            if hasattr(self, "cap"):
+                self.cap.release()
+
+            # Cleanup processor and thread if in inference mode
+            if hasattr(self, "processor"):
+                print("Cleaning up inference processor...")
+                self.processor.cleanup()  # This will stop the prediction thread
+                delattr(self, "processor")  # Remove processor reference
+
+            # Clear display
+            if hasattr(self, "pixmap_item"):
+                self.scene.removeItem(self.pixmap_item)
+
+            # Clear scene
+            self.scene.clear()
+
+            self.is_camera_running = False
+            print("Camera stopped successfully")
+
+        except Exception as e:
+            print(f"Error stopping camera: {str(e)}")

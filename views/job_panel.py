@@ -71,6 +71,10 @@ class JobPanel(QFrame):
         # Add video control buttons
         self.showVideosBtn = QPushButton("Show Video")
         self.addVideoBtn = QPushButton("Add Videos")
+        self.closeCameraBtn = QPushButton("Close Camera")  # Add close camera button
+
+        # Initially disable close camera button
+        self.closeCameraBtn.setEnabled(False)
 
         # Setup combo boxes
         self.modeComboBox.addItems(["None", "Train", "Inference"])
@@ -335,14 +339,44 @@ class JobPanel(QFrame):
             QPushButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                                           stop:0 #1976D2, stop:1 #1565C0);
-                padding-top: 16px;
-                padding-bottom: 14px;
             }
         """
 
-        # Load button style
+        # Style close camera button differently
+        close_camera_style = """
+            QPushButton {
+                font-size: 30px;
+                font-weight: bold;
+                padding: 15px 25px;
+                border-radius: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #FF5252, stop:1 #D32F2F);
+                border: none;
+                color: white;
+                min-width: 160px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #FF6E6E, stop:1 #E33E3E);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #D32F2F, stop:1 #B71C1C);
+            }
+            QPushButton:disabled {
+                background: #666666;
+                color: #999999;
+            }
+        """
+
+        # Apply styles
         self.showVideosBtn.setStyleSheet(button_style)
         self.addVideoBtn.setStyleSheet(button_style)
+        self.closeCameraBtn.setStyleSheet(close_camera_style)
+
+        # Set icon sizes
+        for btn in [self.showVideosBtn, self.addVideoBtn, self.closeCameraBtn]:
+            btn.setIconSize(QtCore.QSize(32, 32))
 
         # Create video control group box with same style
         videoControlGroup = QGroupBox("Video Control")
@@ -369,13 +403,17 @@ class JobPanel(QFrame):
         self.addVideoBtn.setIcon(
             QtGui.QIcon(os.path.join(icon_path, "../icons/add-video.png"))
         )
-
-        for btn in [self.showVideosBtn, self.addVideoBtn]:
-            btn.setIconSize(QtCore.QSize(24, 24))
+        self.closeCameraBtn.setIcon(
+            QtGui.QIcon(os.path.join(icon_path, "../icons/close-camera.png"))
+        )
 
         # Add buttons to layout
         buttonLayout.addWidget(self.showVideosBtn)
         buttonLayout.addWidget(self.addVideoBtn)
+        buttonLayout.addWidget(self.closeCameraBtn)
+
+        # Connect close camera button
+        self.closeCameraBtn.clicked.connect(self.closeCamera)
 
         videoControlGroup.setLayout(buttonLayout)
 
@@ -465,6 +503,8 @@ class JobPanel(QFrame):
                     )
 
         elif self.sourceComboBox.currentText() == "Camera":
+            # Enable close camera button when camera starts
+            self.closeCameraBtn.setEnabled(True)
             # Get settings from input fields
             frame_size = (self.widthInput.value(), self.heightInput.value())
             fps = self.fpsInput.value()
@@ -556,3 +596,16 @@ class JobPanel(QFrame):
                 }
                 """
             )
+
+    def closeCamera(self):
+        """Close camera and cleanup"""
+        try:
+            # Signal to close camera
+            self.videoSelected.emit("camera://close")
+
+            # Update UI
+            self.closeCameraBtn.setEnabled(False)
+            self.showVideosBtn.setText("Show Video")
+
+        except Exception as e:
+            print(f"Error closing camera: {str(e)}")

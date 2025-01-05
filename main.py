@@ -354,6 +354,10 @@ class MainWindow(QMainWindow):
     def updateVideo(self, video_path):
         """Update video widget with new video"""
         if video_path.startswith("camera://"):
+            if video_path == "camera://close":
+                if hasattr(self, "videoWidget"):
+                    self.videoWidget.stopCamera()
+                return
             # Parse camera URL for settings
             if "inference=true" in video_path:
                 # Get settings from URL
