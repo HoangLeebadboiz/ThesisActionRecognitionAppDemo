@@ -116,6 +116,75 @@ class MainWindow(QMainWindow):
         # Store video viewer reference
         self.videoViewer = None
 
+        # Enhanced main window style
+        self.setStyleSheet(
+            """
+            QMainWindow {
+                background: #121212;
+            }
+            QWidget {
+                font-family: 'Segoe UI', Arial, sans-serif;
+            }
+            QLabel {
+                color: #FFFFFF;
+            }
+            QComboBox {
+                font-size: 24px;
+                padding: 12px 20px;
+                border: 2px solid #2196F3;
+                border-radius: 12px;
+                background: #1E1E1E;
+                color: white;
+                min-width: 250px;
+            }
+            QComboBox:hover {
+                border-color: #42A5F5;
+                background: #262626;
+            }
+            QComboBox::drop-down {
+                border: none;
+                padding-right: 20px;
+            }
+            QComboBox::down-arrow {
+                image: url(icons/arrow-down.png);
+                width: 24px;
+                height: 24px;
+            }
+            QComboBox QAbstractItemView {
+                background: #1E1E1E;
+                border: 2px solid #2196F3;
+                border-radius: 12px;
+                selection-background-color: #2196F3;
+                padding: 8px;
+            }
+            QPushButton {
+                font-size: 18px;
+                font-weight: bold;
+                padding: 12px 25px;
+                border-radius: 10px;
+                min-width: 120px;
+            }
+            QPushButton#loginBtn {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #2196F3, stop:1 #1976D2);
+                border: none;
+                color: white;
+            }
+            QPushButton#loginBtn:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #42A5F5, stop:1 #1E88E5);
+            }
+            QPushButton#signupBtn {
+                background: transparent;
+                border: 2px solid #2196F3;
+                color: #2196F3;
+            }
+            QPushButton#signupBtn:hover {
+                background: rgba(33, 150, 243, 0.1);
+            }
+            """
+        )
+
         self.initUI()
         self.showMaximized()
 

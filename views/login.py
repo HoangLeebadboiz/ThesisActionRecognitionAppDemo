@@ -187,6 +187,49 @@ class LoginView(QWidget):
         self.loginBtn.clicked.connect(self.login)
         self.signupBtn.clicked.connect(self.signup)
 
+        # Enhanced login form style
+        self.setStyleSheet(
+            """
+            QWidget {
+                background: #121212;
+            }
+            QLabel {
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QLineEdit {
+                font-size: 24px;
+                padding: 12px;
+                border: 2px solid #333;
+                border-radius: 10px;
+                background: #1E1E1E;
+                color: white;
+                min-width: 300px;
+            }
+            QLineEdit:focus {
+                border-color: #2196F3;
+            }
+            QPushButton {
+                font-size: 18px;
+                font-weight: bold;
+                padding: 12px 30px;
+                border-radius: 10px;
+                min-width: 150px;
+            }
+            QPushButton#loginBtn {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #2196F3, stop:1 #1976D2);
+                border: none;
+                color: white;
+            }
+            QPushButton#loginBtn:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #42A5F5, stop:1 #1E88E5);
+            }
+            """
+        )
+
     def login(self):
         msg = QMessageBox()
         if self.userInput.text() == "":

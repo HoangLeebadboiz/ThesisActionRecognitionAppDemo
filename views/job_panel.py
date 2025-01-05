@@ -41,10 +41,11 @@ class JobPanel(QFrame):
         self.setStyleSheet(
             """
             #jobPanel {
-                background: #1E1E1E;
-                border-left: 2px solid #444;
-                border-bottom: 2px solid #444;
-                border-bottom-left-radius: 15px;
+                background: #1A1A1A;
+                border-left: 2px solid #333;
+                border-bottom: 2px solid #333;
+                border-bottom-left-radius: 20px;
+                box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
             }
         """
         )
@@ -251,10 +252,204 @@ class JobPanel(QFrame):
         self.addVideoBtn.setEnabled(False)
 
     def InitUI(self):
-        # Main layout
+        # Main layout with improved spacing
         mainLayout = QVBoxLayout()
-        mainLayout.setContentsMargins(20, 20, 20, 20)
-        mainLayout.setSpacing(20)
+        mainLayout.setSpacing(25)  # Increased spacing
+        mainLayout.setContentsMargins(25, 30, 25, 30)  # Larger margins
+
+        # Enhanced header style
+        self.headerLabel.setStyleSheet(
+            """
+            QLabel {
+                font-size: 32px;
+                font-weight: bold;
+                color: #2196F3;
+                padding: 15px 0;
+                border-bottom: 2px solid #2196F3;
+                margin-bottom: 10px;
+            }
+            """
+        )
+
+        # Enhanced group box style
+        group_style = """
+            QGroupBox {
+                font-size: 24px;
+                font-weight: bold;
+                border: 2px solid #444;
+                border-radius: 15px;
+                margin-top: 30px;
+                padding: 30px;
+                background: rgba(42, 42, 42, 0.7);
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 20px;
+                padding: 0 20px;
+                color: #2196F3;
+                background: #1E1E1E;
+            }
+        """
+
+        # Enhanced form layout style
+        form_label_style = """
+            QLabel {
+                font-size: 22px;
+                font-weight: bold;
+                color: #FFFFFF;
+                padding: 5px;
+            }
+        """
+
+        # Enhanced combo box style
+        combo_style = """
+            QComboBox {
+                font-size: 22px;
+                padding: 12px;
+                border: 2px solid #444;
+                border-radius: 10px;
+                background: #2A2A2A;
+                color: white;
+                min-width: 200px;
+            }
+            QComboBox:hover {
+                border-color: #2196F3;
+                background: #333333;
+            }
+            QComboBox:focus {
+                border-color: #2196F3;
+            }
+            QComboBox::drop-down {
+                border: none;
+                padding-right: 20px;
+            }
+            QComboBox::down-arrow {
+                image: url(icons/arrow-down.png);
+                width: 16px;
+                height: 16px;
+            }
+            QComboBox QAbstractItemView {
+                font-size: 20px;
+                background: #2A2A2A;
+                border: 2px solid #2196F3;
+                border-radius: 10px;
+                selection-background-color: #2196F3;
+                padding: 8px;
+            }
+            QComboBox QAbstractItemView::item {
+                min-height: 35px;
+                padding: 8px;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                background: rgba(33, 150, 243, 0.1);
+            }
+        """
+
+        # Enhanced spinbox style
+        spinbox_style = """
+            QSpinBox {
+                font-size: 22px;
+                padding: 12px;
+                border: 2px solid #444;
+                border-radius: 10px;
+                background: #2A2A2A;
+                color: white;
+                min-width: 150px;
+            }
+            QSpinBox:hover {
+                border-color: #2196F3;
+                background: #333333;
+            }
+            QSpinBox:focus {
+                border-color: #2196F3;
+            }
+            QSpinBox::up-button, QSpinBox::down-button {
+                width: 25px;
+                border: none;
+                background: #444;
+                border-radius: 5px;
+                margin: 4px;
+            }
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+                background: #2196F3;
+            }
+            QSpinBox::up-arrow {
+                image: url(icons/arrow-up.png);
+                width: 12px;
+                height: 12px;
+            }
+            QSpinBox::down-arrow {
+                image: url(icons/arrow-down.png);
+                width: 12px;
+                height: 12px;
+            }
+        """
+
+        # Apply styles
+        for label in self.findChildren(QLabel):
+            if label != self.headerLabel:
+                label.setStyleSheet(form_label_style)
+
+        for combo in [self.modeComboBox, self.modelComboBox, self.sourceComboBox]:
+            combo.setStyleSheet(combo_style)
+
+        for spinbox in [self.widthInput, self.heightInput, self.fpsInput]:
+            spinbox.setStyleSheet(spinbox_style)
+
+        # Enhanced button styles
+        button_style = """
+            QPushButton {
+                font-size: 22px;
+                font-weight: bold;
+                padding: 15px 25px;
+                border-radius: 12px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #2196F3, stop:1 #1976D2);
+                border: none;
+                color: white;
+                min-width: 180px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #42A5F5, stop:1 #1E88E5);
+                transform: translateY(-1px);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #1976D2, stop:1 #1565C0);
+                transform: translateY(1px);
+            }
+        """
+
+        # Enhanced close camera button style
+        close_camera_style = """
+            QPushButton {
+                font-size: 22px;
+                font-weight: bold;
+                padding: 15px 25px;
+                border-radius: 12px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #FF5252, stop:1 #D32F2F);
+                border: none;
+                color: white;
+                min-width: 180px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #FF6E6E, stop:1 #E33E3E);
+                transform: translateY(-1px);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                          stop:0 #D32F2F, stop:1 #B71C1C);
+                transform: translateY(1px);
+            }
+            QPushButton:disabled {
+                background: #666666;
+                color: #999999;
+                transform: none;
+            }
+        """
 
         # Create header layout with close button
         headerLayout = QHBoxLayout()
@@ -269,38 +464,7 @@ class JobPanel(QFrame):
 
         mainLayout.addLayout(headerLayout)
 
-        # Style header
-        self.headerLabel.setStyleSheet(
-            """
-            QLabel {
-                font-size: 28px;
-                font-weight: bold;
-                color: #2196F3;
-                padding: 10px 0;
-            }
-        """
-        )
-
         # Style group boxes
-        group_style = """
-            QGroupBox {
-                font-size: 22px;
-                font-weight: bold;
-                border: 2px solid #444;
-                border-radius: 12px;
-                margin-top: 20px;
-                padding: 25px;
-                background: rgba(42, 42, 42, 0.7);
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 20px;
-                padding: 0 15px;
-                color: #2196F3;
-            }
-        """
-
-        # Create and style video settings group box
         videoSettingsGroup = QGroupBox("Video Settings")
         videoSettingsGroup.setStyleSheet(group_style)
 
@@ -320,56 +484,6 @@ class JobPanel(QFrame):
         videoSettingsGroup.setLayout(formLayout)
 
         # Style buttons
-        button_style = """
-            QPushButton {
-                font-size: 30px;
-                font-weight: bold;
-                padding: 15px 25px;
-                border-radius: 10px;
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                          stop:0 #2196F3, stop:1 #1976D2);
-                border: none;
-                color: white;
-                min-width: 160px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                          stop:0 #42A5F5, stop:1 #1E88E5);
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                          stop:0 #1976D2, stop:1 #1565C0);
-            }
-        """
-
-        # Style close camera button differently
-        close_camera_style = """
-            QPushButton {
-                font-size: 30px;
-                font-weight: bold;
-                padding: 15px 25px;
-                border-radius: 10px;
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                          stop:0 #FF5252, stop:1 #D32F2F);
-                border: none;
-                color: white;
-                min-width: 160px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                          stop:0 #FF6E6E, stop:1 #E33E3E);
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                          stop:0 #D32F2F, stop:1 #B71C1C);
-            }
-            QPushButton:disabled {
-                background: #666666;
-                color: #999999;
-            }
-        """
-
-        # Apply styles
         self.showVideosBtn.setStyleSheet(button_style)
         self.addVideoBtn.setStyleSheet(button_style)
         self.closeCameraBtn.setStyleSheet(close_camera_style)

@@ -9,6 +9,7 @@ from PyQt5.QtMultimediaWidgets import QGraphicsVideoItem, QVideoWidget
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
+    QGraphicsDropShadowEffect,
     QGraphicsScene,
     QGraphicsView,
     QHBoxLayout,
@@ -72,12 +73,19 @@ class VideoViewer(QWidget):
         self.view.setStyleSheet(
             """
             QGraphicsView {
-                background: #121212;
-                border: 2px solid #333333;
-                border-radius: 12px;
+                border: 2px solid #333;
+                border-radius: 15px;
+                background: #0A0A0A;
             }
-        """
+            """
         )
+
+        # Add shadow effect
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setColor(QtGui.QColor(0, 0, 0, 120))
+        shadow.setOffset(0, 0)
+        self.view.setGraphicsEffect(shadow)
 
     def setupUI(self):
         layout = QVBoxLayout()
