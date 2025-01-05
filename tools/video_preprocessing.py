@@ -16,7 +16,7 @@ class VideoPreprocessing:
     def euclidean_distance(self, point1, point2):
         return np.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
 
-    def group_people(self, centers, threshold=120):
+    def group_people(self, centers, threshold=200):
         n = len(centers)
         groups = []
         visited = [False] * n
@@ -49,8 +49,11 @@ class VideoPreprocessing:
 
         resized_frame = cv2.resize(frame, self.frame_size)
         origin_frame = resized_frame.copy()  # Save the origin for attention
+        resized_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
 
         results = self.yolo.track(resized_frame, stream=True)
+
+        # print(f"1st Selected Group: {self.selected_group}")
 
         for result in results:
             classes_names = result.names
@@ -77,6 +80,7 @@ class VideoPreprocessing:
 
         groups = self.group_people(centers)
         attention_fr = None
+        # print(groups)
 
         for group in groups:
             if len(group) < 2:  # Minimum 2 people
@@ -94,16 +98,28 @@ class VideoPreprocessing:
 
             if self.previous_center:
                 prev_x, prev_y = self.previous_center
+                # print(
+                #     f"Previous: {prev_x, prev_y}, Current: {avg_center_x, avg_center_y}"
+                # )
                 if (
+                    # self.euclidean_distance(
+                    #     (avg_center_x, avg_center_y), (prev_x, prev_y)
+                    # )
+                    # > 30
+                    # or
                     self.euclidean_distance(
                         (avg_center_x, avg_center_y), (prev_x, prev_y)
                     )
-                    > 20
+                    < 5
                 ):
+                    # print("Keep the selected group")
                     self.selected_group = (prev_x, prev_y)
                     continue
+            # print("New attention group")
             self.previous_center = (avg_center_x, avg_center_y)
             self.selected_group = (avg_center_x, avg_center_y)
+
+        # print(f" 2nd Previous: {self.previous_center}, Selected: {self.selected_group}")
 
         if self.selected_group:
             avg_center_x, avg_center_y = self.selected_group
@@ -121,11 +137,11 @@ class VideoPreprocessing:
                 2,
             )
 
-            resized_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
+            # resized_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
             attention_fr = origin_frame[
                 top_left_y:bottom_right_y, top_left_x:bottom_right_x
             ]
-
+        resized_frame = cv2.cvtColor(resized_frame, cv2.COLOR_RGB2BGR)
         return resized_frame, attention_fr
 
     def process_video(self):
@@ -193,6 +209,8 @@ class VideoPreprocessing:
                 processed_frames.append(
                     cv2.resize(processed_frame, (original_size[1], original_size[0]))
                 )
+                # if attention_frame is not None:
+                #     processed_frames.append(attention_frame)
                 current_idx += 1
 
             frame_count += 1

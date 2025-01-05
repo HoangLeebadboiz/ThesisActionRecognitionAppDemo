@@ -32,7 +32,7 @@ class CameraStreamingPreprocessing:
     def euclidean_distance(self, point1, point2):
         return np.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
 
-    def group_people(self, centers, threshold=120):
+    def group_people(self, centers, threshold=200):
         n = len(centers)
         groups = []
         visited = [False] * n
@@ -114,12 +114,16 @@ class CameraStreamingPreprocessing:
                     self.euclidean_distance(
                         (avg_center_x, avg_center_y), (prev_x, prev_y)
                     )
-                    > 20
+                    < 10  # 20
                 ):
                     self.selected_group = (prev_x, prev_y)
+                    # print(f"Da di chuyen qua nhanh: {self.selected_group}")
+                    # print("--------------------------------")
                     continue
             self.previous_center = (avg_center_x, avg_center_y)
             self.selected_group = (avg_center_x, avg_center_y)
+
+        # print(f"Previous: {self.previous_center}, Selected: {self.selected_group}")
 
         if self.selected_group:
             avg_center_x, avg_center_y = self.selected_group
@@ -137,10 +141,10 @@ class CameraStreamingPreprocessing:
                 2,
             )
 
-            resized_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
             attention_fr = origin_frame[
                 top_left_y:bottom_right_y, top_left_x:bottom_right_x
             ]
+        resized_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
 
         return resized_frame, attention_fr
 
@@ -188,7 +192,7 @@ class CameraStreamingPreprocessing:
     def cleanup(self):
         """Clean up resources"""
         try:
-            print("Stopping prediction thread...")
+            # print("Stopping prediction thread...")
             # Signal thread to stop
             self.attention_queue.put(None)
 

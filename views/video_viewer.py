@@ -457,7 +457,7 @@ class VideoViewer(QWidget):
                     width,
                     height,
                     bytes_per_line,
-                    QtGui.QImage.Format_RGB888,
+                    QtGui.QImage.Format.Format_RGB888,
                 )
 
                 # Convert to QPixmap and display
@@ -469,7 +469,9 @@ class VideoViewer(QWidget):
                 self.pixmap_item = self.scene.addPixmap(pixmap)
 
                 # Fit frame to view
-                self.view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
+                self.view.fitInView(
+                    self.pixmap_item, Qt.AspectRatioMode.KeepAspectRatio
+                )
 
         except Exception as e:
             print(f"Frame update error: {str(e)}")
