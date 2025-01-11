@@ -15,6 +15,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from tools.database import UserDatabase
+
 
 class LoginView(QWidget):
     loginSuccess = QtCore.pyqtSignal()  # Add signal
@@ -245,22 +247,20 @@ class LoginView(QWidget):
         else:
             username = self.userInput.text()
             password = self.passInput.text()
-            with open(
-                os.path.abspath(__file__ + "/../../database/users/users.json"), "r"
-            ) as file:
-                data = dict(json.load(file))
-                if username in data.keys() and data[username]["password"] == password:
-                    msg.setIcon(QMessageBox.Icon.Information)
-                    msg.setWindowTitle("Success")
-                    msg.setText("Login successfully")
-                    msg.exec_()
-                    self.loginSuccess.emit()  # Emit signal on successful login
-                    self.close()
-                else:
-                    msg.setIcon(QMessageBox.Icon.Critical)
-                    msg.setWindowTitle("Error")
-                    msg.setText("Username or Password is incorrect")
-                    msg.exec_()
+            user_db = UserDatabase(os.path.abspath(__file__ + "/../../database"))
+            userdata = user_db.get(username)
+            if userdata and userdata[2] == password:
+                msg.setIcon(QMessageBox.Icon.Information)
+                msg.setWindowTitle("Success")
+                msg.setText("Login successfully")
+                msg.exec_()
+                self.loginSuccess.emit()
+                self.close()
+            else:
+                msg.setIcon(QMessageBox.Icon.Critical)
+                msg.setWindowTitle("Error")
+                msg.setText("Username or Password is incorrect")
+                msg.exec()
 
     def signup(self):
         from views.signup import SignupView
