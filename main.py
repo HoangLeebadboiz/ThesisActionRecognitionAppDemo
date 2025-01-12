@@ -88,6 +88,9 @@ class MainWindow(QMainWindow):
         # Create job panel (hidden by default)
         self.jobPanel = None
 
+        # user name
+        self.username = None
+
         # Create reopen job button (hidden by default)
         self.reopenBtn = QPushButton()
         self.reopenBtn.setParent(self)  # Make it a child of MainWindow
@@ -357,6 +360,7 @@ class MainWindow(QMainWindow):
         self.loginView = LoginView()
         # Connect login success signal
         self.loginView.loginSuccess.connect(self.onLoginSuccess)
+        self.loginView.username.connect(self.onUsername)
         self.loginView.show()
 
     def onLoginSuccess(self):
@@ -364,6 +368,9 @@ class MainWindow(QMainWindow):
         self.jobComboBox.setEnabled(True)
         self.videoWidget.setEnabled(True)
         self.videoWidget.toolbar.setEnabled(True)
+
+    def onUsername(self, username):
+        self.username = username
 
     def signup(self):
         self.signupView = SignupView()
@@ -373,7 +380,7 @@ class MainWindow(QMainWindow):
         if index == -1:
             pass
         elif index == 0:
-            self.createJobView = CreateJobView(self.workspace_path)
+            self.createJobView = CreateJobView(self.username, self.workspace_path)
             self.createJobView.createJobSuccess.connect(self.onJob)
             self.createJobView.show()
         elif index == 1:  # Open Job

@@ -58,8 +58,8 @@ class JobDatabase:
                     title TEXT,
                     description TEXT,
                     path TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP,
+                    updated_at TIMESTAMP,
                     responsible_for TEXT
                 )"""
         )

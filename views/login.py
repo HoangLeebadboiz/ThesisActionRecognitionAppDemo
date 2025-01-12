@@ -20,6 +20,7 @@ from tools.database import UserDatabase
 
 class LoginView(QWidget):
     loginSuccess = QtCore.pyqtSignal()  # Add signal
+    username = QtCore.pyqtSignal(str)
 
     def __init__(self):
         super().__init__()
@@ -255,6 +256,7 @@ class LoginView(QWidget):
                 msg.setText("Login successfully")
                 msg.exec_()
                 self.loginSuccess.emit()
+                self.username.emit(username)
                 self.close()
             else:
                 msg.setIcon(QMessageBox.Icon.Critical)

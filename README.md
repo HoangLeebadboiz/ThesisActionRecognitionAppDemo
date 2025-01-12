@@ -111,6 +111,7 @@ python main.py
 
 ## 🛠️ Built With <a name="built_with"></a>
 - [PyQt5](https://www.riverbankcomputing.com/software/pyqt/) - GUI Framework
+- [SQLite](https://www.sqlite.org/index.html) - Database Management
 - [OpenCV](https://opencv.org/) - Video Processing
 - [PyTorch](https://pytorch.org/) - Deep Learning
 - [Ultralytics YOLO](https://github.com/ultralytics/yolov5) - Object Detection

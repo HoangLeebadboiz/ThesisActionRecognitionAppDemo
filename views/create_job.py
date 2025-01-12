@@ -15,11 +15,13 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from tools.database import JobDatabase
+
 
 class CreateJobView(QWidget):
     createJobSuccess = QtCore.pyqtSignal(str)  # Change signal to include job path
 
-    def __init__(self, workspacePath: str = "workspace"):
+    def __init__(self, user: str, workspacePath: str = "workspace"):
         super().__init__()
         self.setWindowTitle("Create New Job")
         self.setStyleSheet(qdarktheme.load_stylesheet())
@@ -32,10 +34,13 @@ class CreateJobView(QWidget):
         self.headerLabel = QLabel("Create New Job")
         self.jobNameLabel = QLabel("Job Name")
         self.jobNameInput = QLineEdit()
+        self.jobDescriptionLabel = QLabel("Job Description")
+        self.jobDescriptionInput = QLineEdit()
         self.createBtn = QPushButton("Create")
         self.cancelBtn = QPushButton("Cancel")
 
         self.workspacePath = workspacePath
+        self.user = user
 
         self.InitUI()
 
@@ -79,9 +84,15 @@ class CreateJobView(QWidget):
         self.jobNameInput.setStyleSheet(style)
         self.jobNameInput.setPlaceholderText("Enter job name")
 
+        self.jobDescriptionLabel.setStyleSheet(style)
+        self.jobDescriptionInput.setStyleSheet(style)
+        self.jobDescriptionInput.setPlaceholderText("Enter job description")
+
         # Add job name input section
         mainLayout.addWidget(self.jobNameLabel)
         mainLayout.addWidget(self.jobNameInput)
+        mainLayout.addWidget(self.jobDescriptionLabel)
+        mainLayout.addWidget(self.jobDescriptionInput)
 
         # Add spacing before buttons
         mainLayout.addSpacing(10)
@@ -157,19 +168,28 @@ class CreateJobView(QWidget):
             msg.exec_()
         else:
             jobName = self.jobNameInput.text()
+            jobDescription = self.jobDescriptionInput.text()
             jobPath = os.path.join(self.workspacePath, jobName)
+            created_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            jobdatabase = JobDatabase(
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "../database")
+            )
+            jobdatabase.insert(
+                jobName, jobDescription, jobPath, created_time, update_time, self.user
+            )
             if not os.path.exists(jobPath):
                 os.makedirs(jobPath)
                 os.makedirs(os.path.join(jobPath, "videos"))
                 with open(os.path.join(jobPath, "config.json"), "w") as f:
                     json.dump({}, f)
-                with open(os.path.join(self.workspacePath, "datajobs.json"), "r+") as f:
-                    datajobs = dict(json.load(f))
-                    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    datajobs[jobName] = {"path": jobPath, "Create Time": current_time}
-                    f.seek(0)
-                    f.truncate()
-                    json.dump(datajobs, f, indent=4)
+                # with open(os.path.join(self.workspacePath, "datajobs.json"), "r+") as f:
+                #     datajobs = dict(json.load(f))
+                #     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                #     datajobs[jobName] = {"path": jobPath, "Create Time": current_time}
+                #     f.seek(0)
+                #     f.truncate()
+                #     json.dump(datajobs, f, indent=4)
             with open(os.path.join(jobPath, "config.json"), "r+") as f:
                 jobs = dict(json.load(f))
                 f.seek(0)
