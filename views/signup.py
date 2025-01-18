@@ -16,6 +16,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from tools.database import UserDatabase
+
 
 class SignupView(QWidget):
     def __init__(self):
@@ -262,20 +264,8 @@ class SignupView(QWidget):
         username = self.usernameInput.text()
         email = self.emailInput.text()
         password = self.passwordInput.text()
-        userconfig = os.path.abspath(__file__ + "/../../database/users/users.json")
-        if not os.path.exists(userconfig):
-            with open(userconfig, "w") as f:
-                json.dump({}, f)
-        with open(userconfig, "r+") as f:
-            users = json.load(f)
-            users[username] = {
-                "username": username,
-                "email": email,
-                "password": password,
-            }
-            f.seek(0)
-            f.truncate()
-            json.dump(users, f, indent=4)
+        userdata = UserDatabase(os.path.abspath(__file__ + "/../../database"))
+        userdata.insert(username, password, email)
         self.show_message(
             "Success", "Account created successfully!", QMessageBox.Icon.Information
         )

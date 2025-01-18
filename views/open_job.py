@@ -17,6 +17,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from tools.database import JobDatabase
+
 
 class OpenJobView(QWidget):
     openJobSuccess = QtCore.pyqtSignal(str)  # Signal to emit job path
@@ -24,8 +26,10 @@ class OpenJobView(QWidget):
     def __init__(self, workspace_path: str):
         super().__init__()
         self.workspace_path = workspace_path
+        self.list_jobs = []
         self.setWindowTitle("Open Job")
-        self.setFixedSize(1000, 800)
+        screen = QApplication.desktop().screenGeometry()
+        self.setFixedSize(screen.width() // 2, screen.height() // 2)
         self.setStyleSheet(qdarktheme.load_stylesheet())
 
         # Set window background
@@ -35,12 +39,6 @@ class OpenJobView(QWidget):
                 background: #1E1E1E;
             }
             """
-        )
-
-        # Center window
-        screen = QApplication.desktop().screenGeometry()
-        self.move(
-            (screen.width() - self.width()) // 2, (screen.height() - self.height()) // 2
         )
 
         # Create widgets
@@ -198,62 +196,41 @@ class OpenJobView(QWidget):
         self.loadJobs()
 
     def loadJobs(self):
-        datajobs_path = os.path.join(self.workspace_path, "datajobs.json")
-        if os.path.exists(datajobs_path):
-            with open(datajobs_path, "r") as f:
-                jobs = json.load(f)
-                for job_name, job_info in jobs.items():
-                    item = QListWidgetItem()
-
-                    # Format creation time nicely
-                    create_time = job_info.get("Create Time", "Unknown")
-                    path = job_info.get("path", "Unknown")
-
-                    # Build info text with better formatting and more information
-                    info_text = (
-                        f"Name:     {job_name}\n"
-                        f"Created:  {create_time}\n"
-                        f"Path:     {path}\n"
-                        f"Status:   Ready\n"
-                        f"Videos:   0"
-                    )
-
-                    item.setText(info_text)
-                    item.setData(Qt.UserRole, job_name)
-
-                    # Style the text with larger font
-                    font = item.font()
-                    font.setPointSize(14)
-                    font.setFamily("Consolas")  # Monospace font for alignment
-                    item.setFont(font)
-
-                    # Set text colors
-                    item.setForeground(QtGui.QColor("#FFFFFF"))
-
-                    # Increase item height for more lines
-                    item.setSizeHint(QSize(0, 180))  # Increased height for more lines
-
-                    # Add icon to item
-                    icon_path = os.path.join(
-                        os.path.dirname(__file__), "../icons/job.png"
-                    )
-                    if os.path.exists(icon_path):
-                        item.setIcon(QtGui.QIcon(icon_path))
-
-                    self.jobList.addItem(item)
+        database_path = os.path.abspath(__file__ + "/../../database")
+        print(database_path)
+        job_database = JobDatabase(database_path)
+        # items = QListWidgetItem()
+        self.list_jobs = job_database.get_all()
+        job_database.close()
+        for job in self.list_jobs:
+            item = QListWidgetItem()
+            item.setText(
+                f"Job: {job[1]} \t\t\t\t Responsible Person: {job[6]}\nCreated: {job[4]} \t Updated: {job[5]}"
+            )
+            item.setData(Qt.UserRole, job[1])
+            font = item.font()
+            font.setPointSize(14)
+            font.setFamily("Consolas")
+            item.setFont(font)
+            item.setForeground(QtGui.QColor("#FFFFFF"))
+            item.setSizeHint(QSize(0, 180))
+            # Add icon to item
+            icon_path = os.path.join(os.path.dirname(__file__), "../icons/job.png")
+            if os.path.exists(icon_path):
+                item.setIcon(QtGui.QIcon(icon_path))
+                # # size of icon
+                # item.icon(QSize(48, 48))
+            self.jobList.addItem(item)
+        self.jobList.setIconSize(QSize(60, 60))
 
     def openJob(self):
         if self.jobList.currentItem():
             job_name = self.jobList.currentItem().data(
                 Qt.UserRole
             )  # Get stored job name
-            datajobs_path = os.path.join(self.workspace_path, "datajobs.json")
-            with open(datajobs_path, "r") as f:
-                jobs = json.load(f)
-                if job_name in jobs:
-                    job_path = jobs[job_name]["path"]
-                    self.openJobSuccess.emit(job_path)
-                    self.close()
+            job_path = self.list_jobs[self.jobList.currentRow()][3]
+            self.openJobSuccess.emit(job_path)
+            self.close()
 
     def deleteJob(self):
         if not self.jobList.currentItem():
@@ -308,44 +285,15 @@ class OpenJobView(QWidget):
         reply = confirm_box.exec_()
 
         if reply == QMessageBox.Yes:
-            datajobs_path = os.path.join(self.workspace_path, "datajobs.json")
+            # Remove job from database
+            job_database = JobDatabase(os.path.abspath(__file__ + "/../../database"))
+            job_database.delete(job_name)
+            job_database.close()
 
-            # Read current jobs
-            with open(datajobs_path, "r") as f:
-                jobs = json.load(f)
-
-            if job_name in jobs:
-                # Get job path before deletion
-                job_path = jobs[job_name]["path"]
-
-                # Remove from datajobs.json
-                del jobs[job_name]
-
-                # Save updated jobs
-                with open(datajobs_path, "w") as f:
-                    json.dump(jobs, f, indent=4)
-
-                # Remove job directory
-                if os.path.exists(job_path):
-                    try:
-                        import shutil
-
-                        shutil.rmtree(job_path)
-                    except Exception as e:
-                        warning_box = QMessageBox(self)
-                        warning_box.setStyleSheet(msg_style)
-                        warning_box.setWindowTitle("Warning")
-                        warning_box.setText(f"Could not remove job directory: {str(e)}")
-                        warning_box.setIcon(QMessageBox.Warning)
-                        warning_box.exec_()
-
-                # Remove item from list
-                self.jobList.takeItem(self.jobList.row(self.jobList.currentItem()))
-
-                # Show success message
-                success_box = QMessageBox(self)
-                success_box.setStyleSheet(msg_style)
-                success_box.setWindowTitle("Success")
-                success_box.setText(f"Job '{job_name}' has been deleted.")
-                success_box.setIcon(QMessageBox.Information)
-                success_box.exec_()
+            # Show success message
+            success_box = QMessageBox(self)
+            success_box.setStyleSheet(msg_style)
+            success_box.setWindowTitle("Success")
+            success_box.setText(f"Job '{job_name}' has been deleted.")
+            success_box.setIcon(QMessageBox.Information)
+            success_box.exec_()
